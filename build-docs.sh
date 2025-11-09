@@ -2,7 +2,7 @@
 set -e
 
 echo "================================================================================"
-echo "DeepWiki Documentation Builder"
+echo "DeepWiki-to-mdBook Documentation Builder"
 echo "================================================================================"
 
 # Auto-detect Git repository if REPO not set
