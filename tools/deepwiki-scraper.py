@@ -312,6 +312,19 @@ def normalize_mermaid_diagram(diagram_text: str) -> str:
     text = normalize_flowchart_nodes(text)
     text = normalize_gantt_diagram(text)
     return text
+
+SOURCE_LINK_PATTERN = re.compile(r'\[([A-Za-z0-9._/-]+?)(\d+-\d+)\]')
+
+def format_source_references(markdown: str) -> str:
+    """Insert colon between filenames and line numbers inside source links."""
+    def replacer(match: re.Match) -> str:
+        filename = match.group(1)
+        lines = match.group(2)
+        if filename.endswith(':'):
+            return match.group(0)
+        return f'[{filename}:{lines}]'
+
+    return SOURCE_LINK_PATTERN.sub(replacer, markdown)
     
     # Original markitdown code (temporarily disabled)
     # try:
@@ -746,6 +759,7 @@ def extract_page_content(url, session, current_page_info=None):
         clean_lines.append(line)
     
     markdown = '\n'.join(clean_lines).strip()
+    markdown = format_source_references(markdown)
     
     # Fix internal wiki links to match our filename structure
     # Convert markdown link to appropriate relative path
