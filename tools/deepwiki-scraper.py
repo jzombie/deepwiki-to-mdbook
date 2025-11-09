@@ -25,6 +25,43 @@ def sanitize_filename(text):
     text = re.sub(r'[-\s]+', '-', text)
     return text.strip('-').lower()
 
+def normalized_number_parts(page_number: str):
+    """Shift DeepWiki numbering down by one so page 1 becomes unnumbered."""
+    if not page_number:
+        return None
+    parts = page_number.split('.')
+    try:
+        main = int(parts[0]) - 1
+    except ValueError:
+        return None
+    remainder = parts[1:]
+    if main <= 0:
+        if not remainder:
+            return []
+        main = 1
+    normalized = [str(main)] + remainder
+    return normalized
+
+def resolve_output_path(page_number: str, title: str):
+    slug = sanitize_filename(title) or 'page'
+    parts = normalized_number_parts(page_number)
+    if parts is None or not parts:
+        filename = f"{slug}.md"
+        return filename, None
+    filename = f"{'-'.join(parts)}-{slug}.md"
+    section_dir = f"section-{parts[0]}" if len(parts) > 1 else None
+    return filename, section_dir
+
+def build_target_path(page_number: str, slug: str) -> str:
+    slug = sanitize_filename(slug) or 'page'
+    parts = normalized_number_parts(page_number)
+    if parts is None or not parts:
+        return f"{slug}.md"
+    filename = f"{'-'.join(parts)}-{slug}.md"
+    if len(parts) > 1:
+        return f"section-{parts[0]}/{filename}"
+    return filename
+
 def fetch_page(url, session):
     """Fetch a page with retries and browser-like headers"""
     headers = {
@@ -804,6 +841,15 @@ def extract_page_content(url, session, current_page_info=None):
     markdown = '\n'.join(clean_lines).strip()
     markdown = format_source_references(markdown)
     
+    # Determine source location for relative linking
+    source_section_dir = None
+    if current_page_info:
+        _, possible_section = resolve_output_path(
+            current_page_info.get('number', ''),
+            current_page_info.get('title', '')
+        )
+        source_section_dir = possible_section
+    
     # Fix internal wiki links to match our filename structure
     # Convert markdown link to appropriate relative path
     def fix_wiki_link(match):
@@ -813,39 +859,17 @@ def extract_page_content(url, session, current_page_info=None):
         if link_match:
             page_num = link_match.group(1)
             slug = link_match.group(2)
+            target_path = build_target_path(page_num, slug)
             
-            # Convert page number format: 2.1 -> 2-1
-            file_num = page_num.replace('.', '-')
-            
-            # Determine target location
-            is_target_subsection = '.' in page_num
-            target_main_section = page_num.split('.')[0] if is_target_subsection else None
-            
-            # Determine source location (current page)
-            if current_page_info:
-                is_source_subsection = current_page_info.get('level', 0) > 0
-                source_main_section = current_page_info.get('number', '').split('.')[0] if is_source_subsection else None
-            else:
-                is_source_subsection = False
-                source_main_section = None
-            
-            # Generate relative path based on source and target locations
-            if is_target_subsection:
-                # Target is in a subsection directory
-                if is_source_subsection and source_main_section == target_main_section:
-                    # Both in same section directory - use just filename
-                    return f']({file_num}-{slug}.md)'
+            if source_section_dir:
+                if target_path.startswith('section-'):
+                    if target_path.startswith(f"{source_section_dir}/"):
+                        target_path = target_path.split('/', 1)[1]
+                    else:
+                        target_path = f"../{target_path}"
                 else:
-                    # Different sections or source is main page - use full path
-                    return f'](section-{target_main_section}/{file_num}-{slug}.md)'
-            else:
-                # Target is a main page
-                if is_source_subsection:
-                    # Source is in subsection, target is main page - go up one level
-                    return f'](../{file_num}-{slug}.md)'
-                else:
-                    # Both main pages - use just filename
-                    return f']({file_num}-{slug}.md)'
+                    target_path = f"../{target_path}"
+            return f']({target_path})'
         return match.group(0)
     
     # Replace wiki links: [text](/owner/repo/page) -> [text](file.md)
@@ -1306,22 +1330,13 @@ def main():
                 try:
                     markdown = extract_page_content(page['url'], session, current_page_info=page)
                     
-                    # Generate filename based on hierarchy
-                    num_prefix = page['number'].replace('.', '-')
-                    title_slug = sanitize_filename(page['title'])
-                    
-                    # Determine output path based on level
-                    if page['level'] == 0:
-                        # Main page: goes in root directory
-                        filename = f"{num_prefix}-{title_slug}.md"
-                        filepath = temp_dir / filename
+                    filename, section_dir = resolve_output_path(page['number'], page['title'])
+                    if section_dir:
+                        section_path = temp_dir / section_dir
+                        section_path.mkdir(exist_ok=True)
+                        filepath = section_path / filename
                     else:
-                        # Subsection: create subdirectory named after main section
-                        main_section = page['number'].split('.')[0]
-                        section_dir = temp_dir / f"section-{main_section}"
-                        section_dir.mkdir(exist_ok=True)
-                        filename = f"{num_prefix}-{title_slug}.md"
-                        filepath = section_dir / filename
+                        filepath = temp_dir / filename
                     
                     # Ensure content starts with title
                     if not markdown.startswith('#'):

@@ -68,12 +68,14 @@ python3 /usr/local/bin/deepwiki-scraper.py "$REPO" "$WIKI_DIR"
 if [ "$MARKDOWN_ONLY" = "true" ]; then
     echo ""
     echo "Step 2: Copying markdown files to output (markdown-only mode)..."
+    rm -rf "$OUTPUT_DIR/markdown"
     mkdir -p "$OUTPUT_DIR/markdown"
-    cp -r "$WIKI_DIR"/* "$OUTPUT_DIR/markdown/"
+    cp -r "$WIKI_DIR"/. "$OUTPUT_DIR/markdown/"
     
     if [ -d "$RAW_DIR" ]; then
         echo ""
         echo "Step 3: Copying raw markdown snapshots..."
+        rm -rf "$OUTPUT_DIR/raw_markdown"
         mkdir -p "$OUTPUT_DIR/raw_markdown"
         cp -r "$RAW_DIR"/. "$OUTPUT_DIR/raw_markdown/"
     fi
@@ -235,11 +237,13 @@ mkdir -p "$OUTPUT_DIR"
 cp -r book "$OUTPUT_DIR/"
 
 # Copy the markdown source files
+rm -rf "$OUTPUT_DIR/markdown"
 mkdir -p "$OUTPUT_DIR/markdown"
-cp -r "$WIKI_DIR"/* "$OUTPUT_DIR/markdown/"
+cp -r "$WIKI_DIR"/. "$OUTPUT_DIR/markdown/"
 
 # Copy pre-enhancement markdown snapshots
 if [ -d "$RAW_DIR" ]; then
+    rm -rf "$OUTPUT_DIR/raw_markdown"
     mkdir -p "$OUTPUT_DIR/raw_markdown"
     cp -r "$RAW_DIR"/. "$OUTPUT_DIR/raw_markdown/"
 fi
