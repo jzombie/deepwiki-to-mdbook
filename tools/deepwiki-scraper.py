@@ -264,6 +264,19 @@ def normalize_flowchart_nodes(diagram_text: str) -> str:
 
     return text
 
+def normalize_empty_node_labels(diagram_text: str) -> str:
+    """Give empty Mermaid node labels a fallback so the parser accepts them."""
+    stripped = diagram_text.strip()
+    if not stripped:
+        return diagram_text
+
+    def repl(match: re.Match) -> str:
+        node_id = match.group(1)
+        label_source = re.sub(r'[_\-]+', ' ', node_id).strip() or node_id
+        return f'{node_id}["{label_source}"]'
+
+    return re.sub(r'(\b[A-Za-z0-9_]+)\[""\]', repl, diagram_text)
+
 def normalize_gantt_diagram(diagram_text: str) -> str:
     """Assign synthetic task IDs when omitted so Mermaid accepts gantt charts."""
     stripped = diagram_text.lstrip()
@@ -311,6 +324,7 @@ def normalize_mermaid_diagram(diagram_text: str) -> str:
     text = normalize_mermaid_edge_labels(diagram_text)
     text = normalize_mermaid_state_descriptions(text)
     text = normalize_flowchart_nodes(text)
+    text = normalize_empty_node_labels(text)
     text = normalize_gantt_diagram(text)
     return text
 
