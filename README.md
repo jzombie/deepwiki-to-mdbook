@@ -144,7 +144,7 @@ When built with `MARKDOWN_ONLY=true`:
 - **Diagram Extraction:** Regex pattern matching on JavaScript `self.__next_f.push` calls
 - **Fuzzy Matching:** Normalized whitespace, progressive chunk comparison, scoring system
 - **Documentation Build:** [mdBook](https://rust-lang.github.io/mdBook/) with rust theme + [mdbook-mermaid](https://github.com/badboy/mdbook-mermaid) plugin
-- **Package Management:** [uv](https://github.com/astral-sh/uv) (modern Python package manager)
+- **Package Management:** `pip` inside the Python slim image
 - **Dependencies:** [Python 3.12](https://www.python.org/), [Rust](https://www.rust-lang.org/), mdbook, mdbook-mermaid
 - **Architecture:** Multi-stage [Docker](https://www.docker.com/) build (Rust builder + Python runtime)
 
@@ -176,7 +176,7 @@ The scraper includes automatic retries (3 attempts per page). If issues persist,
 - **[mdbook-mermaid](https://github.com/badboy/mdbook-mermaid):** Mermaid diagram support for mdBook
 - **[BeautifulSoup4](https://www.crummy.com/software/BeautifulSoup/):** HTML parsing library
 - **[html2text](https://github.com/Alir3z4/html2text):** HTML to Markdown converter
-- **[uv](https://github.com/astral-sh/uv):** Fast Python package installer
+- **`pip`:** Standard Python package installer used during Docker build
 
 ## Architecture Notes
 

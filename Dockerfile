@@ -9,12 +9,9 @@ FROM python:3.12-slim
 
 WORKDIR /workspace
 
-# Install uv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
-
 # Install Python dependencies
 COPY tools/requirements.txt /tmp/requirements.txt
-RUN uv pip install --system --no-cache -r /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
 # Copy mdbook binaries from builder (cargo installs to /usr/local/cargo/bin)
 COPY --from=builder /usr/local/cargo/bin/mdbook /usr/local/bin/
