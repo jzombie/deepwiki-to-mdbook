@@ -48,8 +48,7 @@ jobs:
             if [ -z "$TITLE_SKELETON" ]; then
               TITLE_VALUE="Documentation"
             else
-              TITLE_VALUE=$(printf '%s\n' "$TITLE_SKELETON" | awk '{for(i=1;i<=NF;i++){ $i=toupper(substr($i,1,1)) tolower(substr($i,2)); } print}')
-              TITLE_VALUE="$TITLE_VALUE Documentation"
+              TITLE_VALUE="$TITLE_SKELETON Documentation"
             fi
           fi
 
