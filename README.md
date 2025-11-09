@@ -118,7 +118,7 @@ When built with `MARKDOWN_ONLY=true`:
 
 ### Phase 2: Diagram Enhancement
 1. Extracts JavaScript payload from any DeepWiki page
-2. Finds all mermaid diagrams embedded in JavaScript
+2. Finds mermaid diagrams embedded in JavaScript
 3. Extracts diagrams with sufficient context for matching
 4. Uses fuzzy matching with progressive chunk sizes to find placement locations
 5. Intelligently inserts diagrams after relevant paragraphs
