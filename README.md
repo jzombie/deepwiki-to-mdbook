@@ -106,10 +106,10 @@ When built with `MARKDOWN_ONLY=true`:
 - `output/raw_markdown/` - Pre-enhancement markdown snapshots for parser debugging
 
 **Example filenames:**
-- `1-overview.md`
-- `2-1-workspace-and-crates.md`
-- `3-2-sql-parser.md`
-- `section-4/4-1-logical-planning.md`
+- `overview.md`
+- `1-quick-start.md`
+- `2-configuration-reference.md`
+- `section-3/3-1-three-phase-pipeline.md`
 
 ## How It Works
 

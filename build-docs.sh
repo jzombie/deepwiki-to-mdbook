@@ -135,17 +135,20 @@ echo "Step 3: Generating SUMMARY.md from scraped content..."
     # Extract the leading number, sort numerically, then get the full path back
     main_pages_list=$(ls "$WIKI_DIR"/*.md 2>/dev/null || true)
     overview_file=""
-    if [ -f "$WIKI_DIR/overview.md" ]; then
-        overview_file="overview.md"
-        title=$(head -1 "$WIKI_DIR/$overview_file" | sed 's/^# //')
-        echo "[${title:-Overview}]($overview_file)"
-        echo ""
+    if [ -n "$main_pages_list" ]; then
+        overview_file=$(printf '%s\n' "$main_pages_list" | awk -F/ '{print $NF}' | grep -Ev '^[0-9]' | head -1)
+        if [ -n "$overview_file" ] && [ -f "$WIKI_DIR/$overview_file" ]; then
+            title=$(head -1 "$WIKI_DIR/$overview_file" | sed 's/^# //')
+            echo "[${title:-Overview}]($overview_file)"
+            echo ""
+            main_pages_list=$(printf '%s\n' "$main_pages_list" | grep -v "$overview_file")
+        fi
     fi
     
     main_pages=$(
         printf '%s\n' "$main_pages_list" \
-        | grep -v '/overview\.md$' \
         | awk -F/ '{print $NF}' \
+        | grep -E '^[0-9]' \
         | sort -t- -k1 -n \
         | while read fname; do
             [ -n "$fname" ] && echo "$WIKI_DIR/$fname"

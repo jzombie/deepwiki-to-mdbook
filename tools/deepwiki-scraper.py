@@ -124,7 +124,7 @@ def extract_wiki_structure(repo, session):
     pages = []
     
     # Find all links that match the page pattern (including subsections with dots)
-    # Pattern: /owner/repo/1-overview, /owner/repo/2.1-subsection, etc.
+    # Pattern: /owner/repo/<number>-<slug> (e.g., /owner/repo/1-overview, /owner/repo/2.1-subsection)
     repo_pattern = re.escape(repo)
     all_links = soup.find_all('a', href=re.compile(rf'^/{repo_pattern}/\d+'))
     
@@ -134,8 +134,7 @@ def extract_wiki_structure(repo, session):
         if not href or href in seen_urls:
             continue
             
-        # Extract page number and title
-        # Expected format: /owner/repo/1-overview or /owner/repo/2.1-subsection
+        # Extract page number and title (format: /owner/repo/<number>-<slug>)
         match = re.search(r'/(\d+(?:\.\d+)*)-(.+)$', href)
         if match:
             page_num = match.group(1)
@@ -878,7 +877,7 @@ def extract_page_content(url, session, current_page_info=None):
     return markdown
 
 
-def extract_and_enhance_diagrams(repo, temp_dir, session):
+def extract_and_enhance_diagrams(repo, temp_dir, session, diagram_source_url):
     """Extract diagrams from JavaScript and enhance all markdown files in temp directory."""
     print("\n" + "="*80)
     print("PHASE 2: Extracting diagrams and enhancing markdown files")
@@ -886,7 +885,7 @@ def extract_and_enhance_diagrams(repo, temp_dir, session):
     
     # Extract all diagrams first (fetch from any page - they're all in the JS)
     print("\nExtracting diagrams from JavaScript payload...")
-    url = f'https://deepwiki.com/{repo}/1-overview'
+    url = diagram_source_url or f'https://deepwiki.com/{repo}/overview'
     
     try:
         response = session.get(url)
@@ -1367,7 +1366,9 @@ def main():
                 print(f"✗ Warning: Failed to snapshot raw markdown ({e})")
             
             # Phase 2: Enhance with diagrams using fuzzy matching
-            extract_and_enhance_diagrams(repo, temp_dir, session)
+            overview_page = next((p for p in pages if normalized_number_parts(p['number']) == []), pages[0])
+            diagram_source_url = overview_page['url']
+            extract_and_enhance_diagrams(repo, temp_dir, session, diagram_source_url)
             
             # Move completed files from temp to final output directory
             print("\n" + "="*80)
