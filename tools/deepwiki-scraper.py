@@ -264,6 +264,33 @@ def normalize_flowchart_nodes(diagram_text: str) -> str:
 
     return text
 
+CONNECTOR_PATTERN = r'-->|==>|-.->|--x|x--|o-->|o->|x->|\*-->|<-->|<-\.->|<--|--o'
+FLOW_CONNECTORS = [
+    '-->', '==>', '-.->', '--x', 'x--', 'o-->', 'o->', 'x->',
+    '*-->', '<-->', '<-.->', '<--', '--o',
+]
+CONNECTOR_PATTERN = '|'.join(re.escape(token) for token in FLOW_CONNECTORS)
+STATEMENT_BREAK_PATTERN = re.compile(
+    rf'(?<!\n)([ \t]+)(?=[A-Za-z0-9_][\w\-]*(?:\s*\[[^\]]*\])?\s*(?:{CONNECTOR_PATTERN})(?:\|[^|]*\|)?\s*)'
+)
+
+def normalize_statement_separators(diagram_text: str) -> str:
+    """Insert newlines between consecutive Mermaid statements flattened onto one line."""
+    stripped = diagram_text.strip()
+    if not stripped:
+        return diagram_text
+
+    header = stripped.splitlines()[0].lower()
+    if not header.startswith(('graph', 'flowchart')):
+        return diagram_text
+
+    def repl(match: re.Match) -> str:
+        spaces = match.group(1)
+        indent_len = len(spaces.replace('\t', '    '))
+        return '\n' + (' ' * indent_len)
+
+    return STATEMENT_BREAK_PATTERN.sub(repl, diagram_text)
+
 def normalize_empty_node_labels(diagram_text: str) -> str:
     """Give empty Mermaid node labels a fallback so the parser accepts them."""
     stripped = diagram_text.strip()
@@ -324,6 +351,7 @@ def normalize_mermaid_diagram(diagram_text: str) -> str:
     text = normalize_mermaid_edge_labels(diagram_text)
     text = normalize_mermaid_state_descriptions(text)
     text = normalize_flowchart_nodes(text)
+    text = normalize_statement_separators(text)
     text = normalize_empty_node_labels(text)
     text = normalize_gantt_diagram(text)
     return text
@@ -1040,18 +1068,74 @@ def extract_and_enhance_diagrams(repo, temp_dir, session):
     # Now enhance all markdown files IN TEMP DIRECTORY
     print("\nEnhancing markdown files with diagrams...")
     md_files = list(temp_dir.glob('**/*.md'))
+
+    def first_body_heading_index(lines):
+        for idx, line in enumerate(lines):
+            if line.strip().startswith('## '):
+                return idx
+        return None
+
+    def protected_prefix_end(lines):
+        idx = 0
+        if idx < len(lines) and lines[idx].strip().startswith('# '):
+            idx += 1
+        while idx < len(lines) and not lines[idx].strip():
+            idx += 1
+        if idx < len(lines) and lines[idx].strip().lower().startswith('relevant source files'):
+            idx += 1
+            while idx < len(lines) and not lines[idx].strip():
+                idx += 1
+            while idx < len(lines) and is_list_line(lines[idx]):
+                idx += 1
+            while idx < len(lines) and not lines[idx].strip():
+                idx += 1
+        return idx
+
+    def is_list_line(line: str) -> bool:
+        stripped = line.lstrip()
+        if not stripped:
+            return False
+        if stripped[0] in ('-', '*', '+'):
+            return True
+        return bool(re.match(r'\d+[.)]\s', stripped))
+
+    def advance_past_lists(lines, start_idx):
+        idx = start_idx
+        probe = idx
+        while probe < len(lines) and not lines[probe].strip():
+            probe += 1
+        if probe < len(lines) and is_list_line(lines[probe]):
+            idx = probe
+            while idx < len(lines) and is_list_line(lines[idx]):
+                idx += 1
+            return idx
+        while idx < len(lines) and is_list_line(lines[idx]):
+            idx += 1
+        return idx
+    def enforce_content_start(lines, idx, body_start, guard_idx):
+        min_idx = guard_idx
+        if body_start is not None:
+            min_idx = max(min_idx, body_start)
+        if idx > min_idx:
+            return idx
+        idx = min_idx + 1
+        while idx < len(lines) and not lines[idx].strip():
+            idx += 1
+        return idx
     
     enhanced_count = 0
     for md_file in md_files:
         with open(md_file, 'r', encoding='utf-8') as f:
             content = f.read()
         
-        # Skip if already has diagrams
-        if '```mermaid' in content:
+        # Skip if file already contains real mermaid fences (to avoid duplicates)
+        if re.search(r'^\s*`{3,}\s*mermaid\b', content, re.IGNORECASE | re.MULTILINE):
             continue
         
         # Match and insert diagrams
         lines = content.split('\n')
+        body_start_idx = first_body_heading_index(lines)
+        guard_idx = protected_prefix_end(lines)
         diagrams_used = set()
         pending_insertions = []
         
@@ -1108,7 +1192,7 @@ def extract_and_enhance_diagrams(repo, temp_dir, session):
                             best_match_score = 50
                             break
             
-            if best_match_line != -1:
+            if best_match_line != -1 and best_match_score >= 80:
                 # Find insertion point: after paragraph
                 insert_line = best_match_line + 1
                 
@@ -1136,6 +1220,9 @@ def extract_and_enhance_diagrams(repo, temp_dir, session):
             pending_insertions.sort(key=lambda x: x[0], reverse=True)
             
             for insert_line, diagram, score, idx in pending_insertions:
+                insert_line = enforce_content_start(lines, insert_line, body_start_idx, guard_idx)
+                insert_line = advance_past_lists(lines, insert_line)
+
                 max_backticks = 0
                 for match in re.finditer(r'`+', diagram):
                     run_length = len(match.group(0))
