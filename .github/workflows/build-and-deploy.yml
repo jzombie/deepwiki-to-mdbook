@@ -62,7 +62,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build Docker image
-        run: docker build -t deepwiki-scraper .
+        run: docker build -t deepwiki-to-mdbook .
 
       - name: Run documentation builder
         run: |
@@ -70,7 +70,7 @@ jobs:
             -e REPO="${{ steps.resolve.outputs.repo_value }}" \
             -e BOOK_TITLE="${{ steps.resolve.outputs.title_value }}" \
             -v "$(pwd)/output:/output" \
-            deepwiki-scraper
+            deepwiki-to-mdbook
 
       - name: Upload artifact for Pages
         uses: actions/upload-pages-artifact@v3

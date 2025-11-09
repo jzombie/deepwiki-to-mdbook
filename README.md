@@ -33,14 +33,14 @@ Build the complete documentation (markdown + HTML book):
 ```bash
 # Build the Docker image
 cd docs
-docker build -t deepwiki-scraper .
+docker build -t deepwiki-to-mdbook .
 
 # Run the complete build
 docker run --rm \
   -e REPO="owner/repo" \
   -e BOOK_TITLE="My Documentation" \
   -v "$(pwd)/output:/output" \
-  deepwiki-scraper
+  deepwiki-to-mdbook
 ```
 
 ### Configuration Options
@@ -66,7 +66,7 @@ docker run --rm \
   -e REPO="owner/repo" \
   -e MARKDOWN_ONLY="true" \
   -v "$(pwd)/output:/output" \
-  deepwiki-scraper
+  deepwiki-to-mdbook
 ```
 
 This will:
@@ -83,7 +83,7 @@ docker run --rm \
   -e REPO="owner/repo" \
   -e BOOK_TITLE="Project Documentation" \
   -v "$(pwd)/output:/output" \
-  deepwiki-scraper
+  deepwiki-to-mdbook
 
 # Serve the documentation locally
 cd output
@@ -189,7 +189,7 @@ docker run --rm \
   -e REPO="facebook/react" \
   -e MARKDOWN_ONLY="true" \
   -v "$(pwd)/output:/output" \
-  deepwiki-scraper
+  deepwiki-to-mdbook
 ```
 
 ### Build complete documentation
@@ -199,7 +199,7 @@ docker run --rm \
   -e BOOK_TITLE="React Documentation" \
   -e BOOK_AUTHORS="Meta Open Source" \
   -v "$(pwd)/output:/output" \
-  deepwiki-scraper
+  deepwiki-to-mdbook
 ```
 
 ### Use with any DeepWiki repository
@@ -208,7 +208,7 @@ docker run --rm \
   -e REPO="microsoft/vscode" \
   -e BOOK_TITLE="VS Code Internals" \
   -v "$(pwd)/vscode-docs:/output" \
-  deepwiki-scraper
+  deepwiki-to-mdbook
 ```
 
 ## Credits
