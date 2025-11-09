@@ -189,6 +189,61 @@ def convert_html_to_markdown(html_content):
     markdown = clean_deepwiki_footer(markdown)
     
     return markdown.strip()
+
+def normalize_mermaid_edge_labels(diagram_text: str) -> str:
+    """Flatten multiline edge labels that Mermaid 11 rejects."""
+    stripped = diagram_text.strip()
+    if not stripped:
+        return diagram_text
+
+    header = stripped.splitlines()[0].lower()
+    if not header.startswith(('graph', 'flowchart')):
+        return diagram_text
+
+    def replacer(match: re.Match) -> str:
+        label = match.group(1)
+        needs_cleanup = any(tok in label for tok in ('\n', '\\n', '(', ')'))
+        if not needs_cleanup:
+            return match.group(0)
+
+        cleaned = label.replace('\\n', ' ').replace('\n', ' ')
+        cleaned = cleaned.replace('(', ' ').replace(')', ' ')
+        cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+        return f"|{cleaned}|"
+
+    return re.sub(r'\|([^|]*)\|', replacer, diagram_text)
+
+def normalize_mermaid_state_descriptions(diagram_text: str) -> str:
+    """Ensure state descriptions adhere to the `State : Description` syntax."""
+    stripped = diagram_text.strip()
+    if not stripped:
+        return diagram_text
+
+    header = stripped.splitlines()[0].lower()
+    if not header.startswith('statediagram'):
+        return diagram_text
+
+    normalized_lines = []
+    for line in diagram_text.split('\n'):
+        if ':' not in line or '::' in line:
+            normalized_lines.append(line)
+            continue
+
+        prefix, suffix = line.split(':', 1)
+        if prefix.strip() and suffix.strip():
+            cleaned_suffix = suffix.replace('\\n', ' ').replace('\n', ' ')
+            cleaned_suffix = cleaned_suffix.replace(':', ' - ')
+            cleaned_suffix = re.sub(r'\s+', ' ', cleaned_suffix).strip()
+            line = f"{prefix.rstrip()} : {cleaned_suffix}"
+        normalized_lines.append(line)
+
+    return '\n'.join(normalized_lines)
+
+def normalize_mermaid_diagram(diagram_text: str) -> str:
+    """Apply all normalization passes that keep diagrams compatible with Mermaid 11."""
+    text = normalize_mermaid_edge_labels(diagram_text)
+    text = normalize_mermaid_state_descriptions(text)
+    return text
     
     # Original markitdown code (temporarily disabled)
     # try:
@@ -221,10 +276,10 @@ def extract_mermaid_from_nextjs_data(html_text):
     mermaid_blocks = []
     
     try:
-    # Strategy 1: Look for ```mermaid blocks with newline markers. DeepWiki's
-    # payload sometimes uses escaped \n sequences and sometimes embeds real
-    # newline characters, so handle both forms here.
-        pattern = r'```mermaid(?:\\r\\n|\\n|\r?\n)(.*?)```'
+        # Strategy 1: Look for ```mermaid blocks with newline markers. DeepWiki's
+        # payload sometimes uses escaped \n sequences and sometimes embeds real
+        # newline characters, so handle both forms here.
+        pattern = r'```mermaid(?:\\r\\n|\\n|\r?\n)(.*?)(?:\\r\\n|\\n|\r?\n)```'
         matches = re.finditer(pattern, html_text, re.DOTALL)
         
         for match in matches:
@@ -473,7 +528,7 @@ def extract_mermaid_from_nextjs_page(html_content):
         # Extract mermaid blocks directly from HTML
         # Pattern: ```mermaid\n...```
         # This works because DeepWiki embeds the content in the initial HTML
-        pattern = r'```mermaid\n(.*?)```'
+        pattern = r'```mermaid\n(.*?)\n```'
         matches = re.finditer(pattern, html_content, re.DOTALL)
         
         for match in matches:
@@ -693,14 +748,131 @@ def extract_and_enhance_diagrams(repo, temp_dir, session):
         return
     
     # Extract diagrams with context
-    diagram_pattern = r'```mermaid(?:\\r\\n|\\n|\r?\n)(.*?)```'
+    diagram_pattern = r'```mermaid(?:\\r\\n|\\n|\r?\n)(.*?)(?:\\r\\n|\\n|\r?\n)```'
     diagram_matches = list(re.finditer(diagram_pattern, html_text, re.DOTALL))
     print(f"  Found {len(diagram_matches)} total diagrams")
     
     # Extract diagrams with surrounding context (allow short leading sections)
     diagram_contexts = []
     context_window = 2000  # characters to capture before each diagram
+
+    def merge_multiline_labels(diagram_text: str) -> str:
+        """Collapse wrapped Mermaid labels into literal \n sequences."""
+        def collapse_shape_labels(text: str) -> str:
+            patterns = (
+                r'(\(\("?)(.*?)("?\)\))',   # ("...") and (("..."))
+                r'(\("?)(.*?)("?\))',
+                r'(\{"?)(.*?)("?\})',
+                r'(\["?)(.*?)("?\])',
+                r'(\{\{"?)(.*?)("?\}\})',
+                r'(\[\["?)(.*?)("?\]\])',
+            )
+
+            structural_tokens = (
+                '--', ':::', 'state ', 'subgraph ', 'graph ', 'flowchart',
+                'sequenceDiagram', 'class ', 'participant ', 'loop ', 'opt ',
+                'alt ', 'rect ', 'end', 'gantt', 'journey', 'erDiagram',
+                'mindmap', 'gitGraph', 'C4', 'actor ', 'activate ', 'deactivate ',
+                'box ', 'par ', 'and ', 'critical '
+            )
+
+            def looks_like_mermaid_code(line: str) -> bool:
+                if not line:
+                    return False
+                if any(token in line for token in structural_tokens):
+                    return True
+                if re.search(r'\bstate\b', line):
+                    return True
+                if re.search(r'\w\s*->', line):
+                    return True
+                if '[' in line or ']' in line or '{' in line or '}' in line:
+                    return True
+                return False
+
+            def replacer(match: re.Match) -> str:
+                opener, body, closer = match.groups()
+                if '\n' not in body:
+                    return opener + body + closer
+
+                lines = [line.strip() for line in body.splitlines() if line.strip()]
+                if not lines:
+                    return opener + body + closer
+
+                if any(looks_like_mermaid_code(line) for line in lines):
+                    return opener + body + closer
+
+                collapsed = '\\n'.join(lines)
+                return f"{opener}{collapsed}{closer}"
+
+            collapsed_text = text
+            for pattern in patterns:
+                collapsed_text = re.sub(pattern, replacer, collapsed_text, flags=re.DOTALL)
+            return collapsed_text
+
+        text = collapse_shape_labels(diagram_text)
+
+        lines = text.split('\n')
+        merged_lines = []
+        current_label_index = None
+
+        label_headings = (
+            'state ', 'subgraph ', 'class ', 'style ', 'click ', 'linkStyle ',
+            'direction ', 'note ', 'loop ', 'opt ', 'alt ', 'rect ', 'end',
+            'graph ', 'flowchart', 'sequenceDiagram', 'erDiagram', 'journey',
+            'gantt', 'timeline', 'pie ', 'quadrantChart', 'mindmap', 'gitGraph',
+            'C4', 'blockDiag', 'requirementDiagram', 'actor ', 'activate ',
+            'deactivate ', 'participant ', 'box ', 'par ', 'and ', 'critical ',
+        )
+
+        label_pattern = re.compile(r'^\s*[^\[\]{}()<>"\-]+?:\s+.+')
+
+        def qualifies_as_label(stripped_line: str) -> bool:
+            if not stripped_line:
+                return False
+            if label_pattern.match(stripped_line) is None:
+                return False
+            if any(stripped_line.startswith(prefix) for prefix in label_headings):
+                return False
+            return True
+
+        def is_textual_continuation(stripped_line: str) -> bool:
+            if not stripped_line:
+                return False
+            if any(token in stripped_line for token in ('[', ']', '{', '}', '(', ')', '--', ':::', '->', '=>')):
+                return False
+            if any(stripped_line.startswith(prefix) for prefix in label_headings):
+                return False
+            return True
+
+        for line in lines:
+            stripped = line.strip()
+
+            if current_label_index is not None and is_textual_continuation(stripped):
+                merged_lines[current_label_index] += f"\\n{stripped}"
+                continue
+
+            merged_lines.append(line)
+
+            if qualifies_as_label(stripped):
+                current_label_index = len(merged_lines) - 1
+            else:
+                current_label_index = None
+
+        return '\n'.join(merged_lines)
     
+    def strip_wrapping_quotes(diagram_text: str) -> str:
+        """Remove unnecessary quotation marks around edge labels."""
+
+        # Edge labels like -->|"text"| should drop the extra quotes.
+        edge_label_pattern = re.compile(r'(\|)"([^"\|]+)"(\|)')
+        text = edge_label_pattern.sub(r'\1\2\3', diagram_text)
+
+        # State diagram transitions use : "label" syntax.
+        state_label_pattern = re.compile(r'(:\s*)"([^"\|]+)"')
+        text = state_label_pattern.sub(r'\1\2', text)
+
+        return text
+
     for match in diagram_matches:
         diagram = match.group(1)
         context_start = max(0, match.start() - context_window)
@@ -724,6 +896,20 @@ def extract_and_enhance_diagrams(repo, temp_dir, session):
         diagram = diagram.replace('\\u003c', '<')
         diagram = diagram.replace('\\u003e', '>')
         diagram = diagram.replace('\\u0026', '&')
+        diagram = re.sub(r'<br\s*/?>', lambda _: '\\n', diagram, flags=re.IGNORECASE)
+        diagram = re.sub(
+            r'participant\s+([A-Za-z0-9_\-]+)\["([^\"]+)"\]',
+            lambda m: f'participant {m.group(1)} as "{m.group(2)}"',
+            diagram,
+        )
+        diagram = re.sub(
+            r'(participant\s+[^\s]+\s+as\s+")([^\"]+)(")',
+            lambda m: f"{m.group(1)}{' '.join(m.group(2).split())}{m.group(3)}",
+            diagram,
+        )
+        diagram = merge_multiline_labels(diagram)
+        diagram = strip_wrapping_quotes(diagram)
+        diagram = normalize_mermaid_diagram(diagram)
         diagram = diagram.strip()
         
         if len(diagram) > 10:
@@ -853,11 +1039,24 @@ def extract_and_enhance_diagrams(repo, temp_dir, session):
             pending_insertions.sort(key=lambda x: x[0], reverse=True)
             
             for insert_line, diagram, score, idx in pending_insertions:
-                lines.insert(insert_line, '')
-                lines.insert(insert_line, '```')
-                lines.insert(insert_line, diagram)
-                lines.insert(insert_line, '```mermaid')
-                lines.insert(insert_line, '')
+                max_backticks = 0
+                for match in re.finditer(r'`+', diagram):
+                    run_length = len(match.group(0))
+                    if run_length > max_backticks:
+                        max_backticks = run_length
+                fence_len = max(3, max_backticks + 1)
+                fence = '`' * fence_len
+
+                lines_to_insert = [
+                    '',
+                    f"{fence}mermaid",
+                    diagram,
+                    fence,
+                    '',
+                ]
+
+                for line in reversed(lines_to_insert):
+                    lines.insert(insert_line, line)
             
             # Save enhanced file
             with open(md_file, 'w', encoding='utf-8') as f:
