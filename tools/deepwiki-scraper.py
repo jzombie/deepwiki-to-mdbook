@@ -12,6 +12,7 @@ Example:
 import sys
 import re
 import time
+import html
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 import requests
@@ -294,6 +295,12 @@ def extract_mermaid_from_nextjs_data(html_text):
                     block = block.replace('\\u003e', '>')
                     block = block.replace('\\u0026', '&')
                     
+                    # Clean up HTML tags that break mermaid rendering (after unescaping)
+                    block = block.replace('<br/>', ' ')
+                    block = block.replace('<br />', ' ')
+                    block = block.replace('<br>', ' ')
+                    block = re.sub(r'<[^>]+>', '', block)  # Remove any remaining HTML tags
+                    
                     lines = [l for l in block.split('\n') if l.strip()]
                     if len(lines) >= 3:
                         mermaid_blocks.append(block.strip())
@@ -420,10 +427,17 @@ def inject_mermaid_into_markdown(markdown, mermaid_blocks):
                 
                 # Only inject if next content is not already a diagram
                 if next_line_idx < len(lines) and not lines[next_line_idx].strip().startswith('```'):
+                    # Clean up HTML tags from mermaid block before inserting
+                    cleaned_block = mermaid_blocks[diagram_idx]
+                    cleaned_block = cleaned_block.replace('<br/>', ' ')
+                    cleaned_block = cleaned_block.replace('<br />', ' ')
+                    cleaned_block = cleaned_block.replace('<br>', ' ')
+                    cleaned_block = re.sub(r'<[^>]+>', '', cleaned_block)
+                    
                     # Insert diagram after this heading
                     result.append('')
                     result.append('```mermaid')
-                    result.append(mermaid_blocks[diagram_idx])
+                    result.append(cleaned_block)
                     result.append('```')
                     result.append('')
                     diagram_idx += 1
@@ -450,17 +464,82 @@ def inject_mermaid_into_markdown(markdown, mermaid_blocks):
     
     return '\n'.join(result)
 
+def extract_mermaid_from_nextjs_page(html_content):
+    """Extract mermaid diagrams directly from the HTML source"""
+    diagrams = []
+    
+    try:
+        # Extract mermaid blocks directly from HTML
+        # Pattern: ```mermaid\n...```
+        # This works because DeepWiki embeds the content in the initial HTML
+        pattern = r'```mermaid\n(.*?)```'
+        matches = re.finditer(pattern, html_content, re.DOTALL)
+        
+        for match in matches:
+            diagram = match.group(1).strip()
+            if len(diagram) > 20:  # Basic sanity check
+                diagrams.append(diagram)
+        
+        # Deduplicate diagrams
+        unique_diagrams = []
+        seen_fingerprints = set()
+        for diagram in diagrams:
+            fingerprint = diagram[:100]
+            if fingerprint not in seen_fingerprints:
+                seen_fingerprints.add(fingerprint)
+                unique_diagrams.append(diagram)
+        
+        return unique_diagrams
+        
+    except Exception as e:
+        print(f"  [WARNING] Failed to extract diagrams: {e}")
+        return []
+
+
+def inject_diagrams_into_markdown(markdown, diagrams):
+    """Inject diagrams into markdown content at appropriate locations"""
+    if not diagrams:
+        return markdown
+    
+    lines = markdown.split('\n')
+    result = []
+    diagram_idx = 0
+    
+    # Strategy: inject diagrams after headings (## level or higher)
+    for i, line in enumerate(lines):
+        result.append(line)
+        
+        # After a heading that's ## or higher, inject next diagram
+        if line.startswith('##') and diagram_idx < len(diagrams):
+            # Add blank line, diagram block, and another blank line
+            result.append('')
+            result.append('```mermaid')
+            result.append(diagrams[diagram_idx])
+            result.append('```')
+            result.append('')
+            diagram_idx += 1
+    
+    # If there are leftover diagrams, append them at the end
+    if diagram_idx < len(diagrams):
+        result.append('')
+        result.append('## Additional Diagrams')
+        result.append('')
+        for idx in range(diagram_idx, len(diagrams)):
+            result.append('```mermaid')
+            result.append(diagrams[idx])
+            result.append('```')
+            result.append('')
+    
+    return '\n'.join(result)
+
 def extract_page_content(url, session, current_page_info=None):
     """Extract the main content from a wiki page"""
     print(f"  Fetching {url}...")
     response = fetch_page(url, session)
     
-    # NOTE: Mermaid diagrams are client-side rendered and cannot be extracted
-    # without running JavaScript. They exist in the Next.js data payload but
-    # are mixed with all other pages, making per-page extraction impossible.
-    
-    # Parse HTML with BeautifulSoup to get THIS page's structure
+    # Parse HTML with BeautifulSoup
     soup = BeautifulSoup(response.text, 'html.parser')
+
     
     # Remove unwanted elements first
     for elem in soup.select('nav, header, footer, aside, .sidebar, .menu, script, style, .navigation, [role="navigation"]'):
@@ -592,6 +671,7 @@ def extract_page_content(url, session, current_page_info=None):
     markdown = re.sub(r'\]\(/[^/]+/[^/]+/([^)]+)\)', fix_wiki_link, markdown)
     
     return markdown
+
 
 def extract_and_enhance_diagrams(repo, temp_dir, session):
     """Extract diagrams from JavaScript and enhance all markdown files in temp directory."""
@@ -876,7 +956,7 @@ def main():
             
             print(f"\n✓ Successfully extracted {success_count}/{len(pages)} pages to temp directory")
             
-            # Extract and enhance with diagrams IN TEMP DIRECTORY
+            # Phase 2: Enhance with diagrams using fuzzy matching
             extract_and_enhance_diagrams(repo, temp_dir, session)
             
             # Move completed files from temp to final output directory

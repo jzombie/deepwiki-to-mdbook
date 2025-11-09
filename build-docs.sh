@@ -119,8 +119,12 @@ echo "Step 3: Generating SUMMARY.md from scraped content..."
     echo "# Summary"
     echo ""
     
+    # Get all main pages sorted numerically by their numeric prefix
+    # Extract the leading number, sort numerically, then get the full path back
+    main_pages=$(ls "$WIKI_DIR"/*.md 2>/dev/null | awk -F/ '{print $NF}' | sort -t- -k1 -n | while read fname; do echo "$WIKI_DIR/$fname"; done)
+    
     # Find the first main page (usually overview/introduction)
-    first_page=$(ls "$WIKI_DIR"/*.md 2>/dev/null | head -1 | xargs basename)
+    first_page=$(echo "$main_pages" | head -1 | xargs basename)
     if [ -n "$first_page" ]; then
         title=$(head -1 "$WIKI_DIR/$first_page" | sed 's/^# //')
         echo "[${title:-Introduction}]($first_page)"
@@ -128,7 +132,7 @@ echo "Step 3: Generating SUMMARY.md from scraped content..."
     fi
     
     # Process all main pages (files in root, not in section-* directories)
-    for file in "$WIKI_DIR"/*.md; do
+    echo "$main_pages" | while read -r file; do
         [ -f "$file" ] || continue
         filename=$(basename "$file")
         
@@ -148,8 +152,9 @@ echo "Step 3: Generating SUMMARY.md from scraped content..."
             echo ""
             echo "- [$title]($filename)"
             
-            # Add subsections
-            for subfile in "$section_dir"/*.md; do
+            # Add subsections (sorted numerically by prefix)
+            ls "$section_dir"/*.md 2>/dev/null | awk -F/ '{print $NF}' | sort -t- -k1 -n | while read subname; do
+                subfile="$section_dir/$subname"
                 [ -f "$subfile" ] || continue
                 subfilename=$(basename "$subfile")
                 subtitle=$(head -1 "$subfile" | sed 's/^# //')
