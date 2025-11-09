@@ -2,6 +2,8 @@
 
 [![Ask DeepWiki][deepwiki-badge]][deepwiki-page]
 
+**Work in Progress**
+
 A generic utility for extracting wiki documentation from [DeepWiki.com](https://deepwiki.com) and building it into beautiful HTML documentation with [mdBook](https://rust-lang.github.io/mdBook/).
 
 DeepWiki: https://deepwiki.com/jzombie/deepwiki-to-mdbook  
