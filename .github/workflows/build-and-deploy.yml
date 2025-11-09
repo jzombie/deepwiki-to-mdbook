@@ -11,11 +11,9 @@ on:
       repo:
         description: "GitHub repository (owner/repo)"
         required: false
-        default: "jzombie/deepwiki-to-mdbook"
       book_title:
         description: "Book title"
         required: false
-        default: "DeepWiki-to-MdBook Documentation"
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
@@ -36,6 +34,37 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Resolve repository and book title
+        id: resolve
+        run: |
+          set -eo pipefail
+
+          REPO_INPUT="${{ github.event.inputs.repo }}"
+          if [ -n "$REPO_INPUT" ]; then
+            REPO_VALUE="$REPO_INPUT"
+          else
+            REPO_VALUE="${{ github.repository }}"
+          fi
+
+          TITLE_INPUT="${{ github.event.inputs.book_title }}"
+          if [ -n "$TITLE_INPUT" ]; then
+            TITLE_VALUE="$TITLE_INPUT"
+          else
+            REPO_NAME="${REPO_VALUE#*/}"
+            TITLE_SKELETON=$(printf '%s\n' "$REPO_NAME" | tr '-_' ' ')
+            if [ -z "$TITLE_SKELETON" ]; then
+              TITLE_VALUE="Documentation"
+            else
+              TITLE_VALUE=$(printf '%s\n' "$TITLE_SKELETON" | awk '{for(i=1;i<=NF;i++){ $i=toupper(substr($i,1,1)) tolower(substr($i,2)); } print}')
+              TITLE_VALUE="$TITLE_VALUE Documentation"
+            fi
+          fi
+
+          echo "repo_value=$REPO_VALUE" >> "$GITHUB_OUTPUT"
+          echo "title_value=$TITLE_VALUE" >> "$GITHUB_OUTPUT"
+          echo "Using repository: $REPO_VALUE"
+          echo "Using book title: $TITLE_VALUE"
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -45,8 +74,8 @@ jobs:
       - name: Run documentation builder
         run: |
           docker run --rm \
-            -e REPO="${{ github.event.inputs.repo || 'jzombie/deepwiki-to-mdbook' }}" \
-            -e BOOK_TITLE="${{ github.event.inputs.book_title || 'DeepWiki-to-MdBook Documentation' }}" \
+            -e REPO="${{ steps.resolve.outputs.repo_value }}" \
+            -e BOOK_TITLE="${{ steps.resolve.outputs.title_value }}" \
             -v "$(pwd)/output:/output" \
             deepwiki-scraper
 
