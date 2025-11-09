@@ -44,7 +44,7 @@ jobs:
             TITLE_VALUE="$TITLE_INPUT"
           else
             REPO_NAME="${REPO_VALUE#*/}"
-            TITLE_SKELETON=$(printf '%s\n' "$REPO_NAME" | tr '_-' ' ')
+            TITLE_SKELETON="$REPO_NAME"
             if [ -z "$TITLE_SKELETON" ]; then
               TITLE_VALUE="Documentation"
             else
