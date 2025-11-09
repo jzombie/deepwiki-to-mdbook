@@ -32,16 +32,24 @@ Build the complete documentation (markdown + HTML book):
 
 ```bash
 # Build the Docker image
-cd docs
 docker build -t deepwiki-to-mdbook .
 
 # Run the complete build
+# Be sure to change `owner/repo` for the desired repo
 docker run --rm \
   -e REPO="owner/repo" \
   -e BOOK_TITLE="My Documentation" \
   -v "$(pwd)/output:/output" \
   deepwiki-to-mdbook
+
+# Serve the documentation locally
+cd output
+# Here Python is used, but any web server will work as well
+python3 -m http.server --directory book 8000
+# Open http://localhost:8000 in your browser
 ```
+
+
 
 ### Configuration Options
 
@@ -56,40 +64,6 @@ All configuration is done via environment variables:
 | `MARKDOWN_ONLY` | Skip mdBook build, only extract markdown | `false`                       |
 
 **Note:** If `REPO` is not provided, the script will attempt to auto-detect it from the current directory's Git remote URL (if running outside Docker).
-
-### Markdown-Only Mode (Debugging)
-
-For faster iteration when debugging or just extracting markdown:
-
-```bash
-docker run --rm \
-  -e REPO="owner/repo" \
-  -e MARKDOWN_ONLY="true" \
-  -v "$(pwd)/output:/output" \
-  deepwiki-to-mdbook
-```
-
-This will:
-- Scrape wiki pages from DeepWiki
-- Extract and intelligently place mermaid diagrams
-- Output only the markdown files (skip mdBook build)
-- Much faster for debugging diagram placement or content extraction
-
-### Complete Example
-
-```bash
-# Build documentation for any GitHub project with DeepWiki
-docker run --rm \
-  -e REPO="owner/repo" \
-  -e BOOK_TITLE="Project Documentation" \
-  -v "$(pwd)/output:/output" \
-  deepwiki-to-mdbook
-
-# Serve the documentation locally
-cd output
-python3 -m http.server --directory book 8000
-# Open http://localhost:8000 in your browser
-```
 
 ## Output Format
 
@@ -109,6 +83,14 @@ When built without `MARKDOWN_ONLY=true`, you get:
 - `output/book.toml` - mdBook configuration file
 
 ### Markdown-Only Mode
+
+```bash
+docker run --rm \
+  -e REPO="owner/repo" \
+  -e MARKDOWN_ONLY="true" \
+  -v "$(pwd)/output:/output" \
+  deepwiki-to-mdbook
+```
 
 When built with `MARKDOWN_ONLY=true`:
 
@@ -180,36 +162,6 @@ The scraper includes automatic retries (3 attempts per page). If issues persist,
 - Ensure Docker has enough memory (2GB+ recommended)
 - Check that the Rust toolchain installed correctly in the image
 - Try `MARKDOWN_ONLY=true` to verify markdown extraction works independently
-
-## Examples
-
-### Extract markdown only (fast debugging)
-```bash
-docker run --rm \
-  -e REPO="facebook/react" \
-  -e MARKDOWN_ONLY="true" \
-  -v "$(pwd)/output:/output" \
-  deepwiki-to-mdbook
-```
-
-### Build complete documentation
-```bash
-docker run --rm \
-  -e REPO="facebook/react" \
-  -e BOOK_TITLE="React Documentation" \
-  -e BOOK_AUTHORS="Meta Open Source" \
-  -v "$(pwd)/output:/output" \
-  deepwiki-to-mdbook
-```
-
-### Use with any DeepWiki repository
-```bash
-docker run --rm \
-  -e REPO="microsoft/vscode" \
-  -e BOOK_TITLE="VS Code Internals" \
-  -v "$(pwd)/vscode-docs:/output" \
-  deepwiki-to-mdbook
-```
 
 ## Credits
 
