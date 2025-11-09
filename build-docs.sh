@@ -133,23 +133,29 @@ echo "Step 3: Generating SUMMARY.md from scraped content..."
     
     # Get all main pages sorted numerically by their numeric prefix
     # Extract the leading number, sort numerically, then get the full path back
-    main_pages=$(ls "$WIKI_DIR"/*.md 2>/dev/null | awk -F/ '{print $NF}' | sort -t- -k1 -n | while read fname; do echo "$WIKI_DIR/$fname"; done)
-    
-    # Find the first main page (usually overview/introduction)
-    first_page=$(echo "$main_pages" | head -1 | xargs basename)
-    if [ -n "$first_page" ]; then
-        title=$(head -1 "$WIKI_DIR/$first_page" | sed 's/^# //')
-        echo "[${title:-Introduction}]($first_page)"
+    main_pages_list=$(ls "$WIKI_DIR"/*.md 2>/dev/null || true)
+    overview_file=""
+    if [ -f "$WIKI_DIR/overview.md" ]; then
+        overview_file="overview.md"
+        title=$(head -1 "$WIKI_DIR/$overview_file" | sed 's/^# //')
+        echo "[${title:-Overview}]($overview_file)"
         echo ""
     fi
+    
+    main_pages=$(
+        printf '%s\n' "$main_pages_list" \
+        | grep -v '/overview\.md$' \
+        | awk -F/ '{print $NF}' \
+        | sort -t- -k1 -n \
+        | while read fname; do
+            [ -n "$fname" ] && echo "$WIKI_DIR/$fname"
+        done
+    )
     
     # Process all main pages (files in root, not in section-* directories)
     echo "$main_pages" | while read -r file; do
         [ -f "$file" ] || continue
         filename=$(basename "$file")
-        
-        # Skip the first page (already added as introduction)
-        [ "$filename" = "$first_page" ] && continue
         
         # Extract title from first line of markdown file
         title=$(head -1 "$file" | sed 's/^# //')
@@ -160,8 +166,6 @@ echo "Step 3: Generating SUMMARY.md from scraped content..."
         
         if [ -n "$section_num" ] && [ -d "$section_dir" ]; then
             # Main section with subsections
-            echo "# $title"
-            echo ""
             echo "- [$title]($filename)"
             
             # Add subsections (sorted numerically by prefix)
@@ -172,7 +176,6 @@ echo "Step 3: Generating SUMMARY.md from scraped content..."
                 subtitle=$(head -1 "$subfile" | sed 's/^# //')
                 echo "  - [$subtitle](section-$section_num/$subfilename)"
             done
-            echo ""
         else
             # Standalone page without subsections
             echo "- [$title]($filename)"
