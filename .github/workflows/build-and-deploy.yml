@@ -7,13 +7,6 @@ on:
 
   # Allow manual trigger
   workflow_dispatch:
-    inputs:
-      repo:
-        description: "GitHub repository (owner/repo)"
-        required: false
-      book_title:
-        description: "Book title"
-        required: false
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
