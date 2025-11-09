@@ -44,6 +44,11 @@ REPO_NAME=$(echo "$REPO" | cut -d'/' -f2)
 : "${BOOK_AUTHORS:=$REPO_OWNER}"
 : "${GIT_REPO_URL:=https://github.com/$REPO}"
 
+DEEPWIKI_URL="https://deepwiki.com/$REPO"
+DEEPWIKI_BADGE_URL="https://deepwiki.com/badge.svg"
+REPO_BADGE_LABEL=$(printf '%s' "$REPO" | sed 's/-/--/g' | sed 's/\//%2F/g')
+GITHUB_BADGE_URL="https://img.shields.io/badge/GitHub-${REPO_BADGE_LABEL}-181717?logo=github"
+
 echo ""
 echo "Configuration:"
 echo "  Repository:    $REPO"
@@ -162,8 +167,39 @@ echo "Generated SUMMARY.md with $(grep -c '\[' src/SUMMARY.md) entries"
 
 # Step 4: Copy markdown files to book src
 echo ""
-echo "Step 4: Copying markdown files to book..."
+echo "Step 4: Copying and processing markdown files to book..."
+
+# Create badges HTML snippet
+BADGES_HTML="<div class=\"project-badges\" style=\"display:flex;align-items:center;gap:0.6rem;padding:0.75rem 0 0.5rem;flex-wrap:wrap;margin-bottom:1.5rem;border-bottom:1px solid #e0e0e0;\">
+<a href=\"$DEEPWIKI_URL\" target=\"_blank\" rel=\"noopener noreferrer\" style=\"display:inline-flex;text-decoration:none;\"><img src=\"$DEEPWIKI_BADGE_URL\" alt=\"DeepWiki\" style=\"height:24px;\" /></a>"
+
+if [ -n "$GIT_REPO_URL" ]; then
+    BADGES_HTML="$BADGES_HTML
+<a href=\"$GIT_REPO_URL\" target=\"_blank\" rel=\"noopener noreferrer\" style=\"display:inline-flex;text-decoration:none;\"><img src=\"$GITHUB_BADGE_URL\" alt=\"GitHub\" style=\"height:24px;\" /></a>"
+fi
+
+BADGES_HTML="$BADGES_HTML
+</div>
+
+"
+
+# Copy files and inject badges
 cp -r "$WIKI_DIR"/* src/
+
+# Inject badges at the top of each markdown file
+echo "Injecting badges into markdown files..."
+file_count=0
+for mdfile in src/*.md src/*/*.md; do
+    [ -f "$mdfile" ] || continue
+    # Create temp file with badges + original content
+    {
+        printf '%s\n' "$BADGES_HTML"
+        cat "$mdfile"
+    } > "$mdfile.tmp"
+    mv "$mdfile.tmp" "$mdfile"
+    file_count=$((file_count + 1))
+done
+echo "Injected badges into $file_count files"
 
 # Step 5: Install mermaid support
 echo ""
