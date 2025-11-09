@@ -1,6 +1,11 @@
 # DeepWiki-to-mdBook Converter
 
+[![Ask DeepWiki][deepwiki-badge]][deepwiki-page]
+
 A generic utility for extracting wiki documentation from [DeepWiki.com](https://deepwiki.com) and building it into beautiful HTML documentation with [mdBook](https://rust-lang.github.io/mdBook/).
+
+DeepWiki: https://deepwiki.com/jzombie/deepwiki-to-mdbook  
+mdBook: https://deepwiki-to-mdbook.zenosmosis.com
 
 ## Features
 
@@ -230,3 +235,6 @@ Perfect for:
 - Building searchable HTML documentation
 - Creating offline documentation archives
 - Integrating into CI/CD pipelines
+
+[deepwiki-page]: https://deepwiki.com/jzombie/deepwiki-to-mdbook
+[deepwiki-badge]: https://deepwiki.com/badge.svg
