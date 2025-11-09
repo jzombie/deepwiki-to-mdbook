@@ -61,7 +61,7 @@ def discover_subsections(repo, main_page_num, session):
                     page_num = match.group(1).replace('-', '.')
                     title_slug = match.group(2)
                     # Convert slug to title (best guess)
-                    title = title_slug.replace('-', ' ').title()
+                    title = title_slug.replace('-', ' ').strip()
                     
                     subsections.append({
                         'number': page_num,
@@ -88,7 +88,8 @@ def extract_wiki_structure(repo, session):
     
     # Find all links that match the page pattern (including subsections with dots)
     # Pattern: /owner/repo/1-overview, /owner/repo/2.1-subsection, etc.
-    all_links = soup.find_all('a', href=re.compile(f'^/{repo}/\d+'))
+    repo_pattern = re.escape(repo)
+    all_links = soup.find_all('a', href=re.compile(rf'^/{repo_pattern}/\d+'))
     
     seen_urls = set()
     for link in all_links:
