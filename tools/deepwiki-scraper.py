@@ -221,9 +221,10 @@ def extract_mermaid_from_nextjs_data(html_text):
     mermaid_blocks = []
     
     try:
-        # Strategy 1: Look for ```mermaid blocks with escaped newlines (\\n)
-        # The HTML contains literal \n escape sequences, not actual newlines
-        pattern = r'```mermaid\\n(.*?)```'
+    # Strategy 1: Look for ```mermaid blocks with newline markers. DeepWiki's
+    # payload sometimes uses escaped \n sequences and sometimes embeds real
+    # newline characters, so handle both forms here.
+        pattern = r'```mermaid(?:\\r\\n|\\n|\r?\n)(.*?)```'
         matches = re.finditer(pattern, html_text, re.DOTALL)
         
         for match in matches:
@@ -692,20 +693,20 @@ def extract_and_enhance_diagrams(repo, temp_dir, session):
         return
     
     # Extract diagrams with context
-    diagram_pattern = r'```mermaid\\n(.*?)```'
-    all_diagrams = re.findall(diagram_pattern, html_text, re.DOTALL)
-    print(f"  Found {len(all_diagrams)} total diagrams")
+    diagram_pattern = r'```mermaid(?:\\r\\n|\\n|\r?\n)(.*?)```'
+    diagram_matches = list(re.finditer(diagram_pattern, html_text, re.DOTALL))
+    print(f"  Found {len(diagram_matches)} total diagrams")
     
-    # Extract with more context (500+ chars before each diagram)
+    # Extract diagrams with surrounding context (allow short leading sections)
     diagram_contexts = []
-    markdown_pattern = r'([^`]{500,}?)```mermaid\\n(.*?)```'
-    markdown_matches = re.finditer(markdown_pattern, html_text, re.DOTALL)
+    context_window = 2000  # characters to capture before each diagram
     
-    for match in markdown_matches:
-        context_before = match.group(1)
-        diagram = match.group(2)
+    for match in diagram_matches:
+        diagram = match.group(1)
+        context_start = max(0, match.start() - context_window)
+        context_before = html_text[context_start:match.start()]
         
-        # Unescape context - keep last 500 chars
+        # Unescape context - keep last 500 chars for matching
         context = context_before.replace('\\n', '\n')
         context = context.replace('\\t', ' ')
         context = context.replace('\\"', '"')
@@ -715,7 +716,7 @@ def extract_and_enhance_diagrams(repo, temp_dir, session):
         context = context.replace('\\u0026', '&')
         context = context[-500:].strip()
         
-        # Unescape diagram
+        # Unescape diagram content
         diagram = diagram.replace('\\n', '\n')
         diagram = diagram.replace('\\t', '\t')
         diagram = diagram.replace('\\"', '"')
