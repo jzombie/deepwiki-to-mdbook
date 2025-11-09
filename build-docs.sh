@@ -26,6 +26,7 @@ GIT_REPO_URL="${GIT_REPO_URL:-}"
 MARKDOWN_ONLY="${MARKDOWN_ONLY:-false}"  # Set to "true" to skip mdBook build (debugging)
 WORK_DIR="/workspace"
 WIKI_DIR="$WORK_DIR/wiki"
+RAW_DIR="$WORK_DIR/raw_markdown"
 OUTPUT_DIR="/output"
 BOOK_DIR="$WORK_DIR/book"
 
@@ -60,6 +61,7 @@ echo "  Markdown Only: $MARKDOWN_ONLY"
 # Step 1: Scrape wiki
 echo ""
 echo "Step 1: Scraping wiki from DeepWiki..."
+rm -rf "$RAW_DIR"
 python3 /usr/local/bin/deepwiki-scraper.py "$REPO" "$WIKI_DIR"
 
 # If markdown-only mode, skip mdBook build
@@ -69,13 +71,21 @@ if [ "$MARKDOWN_ONLY" = "true" ]; then
     mkdir -p "$OUTPUT_DIR/markdown"
     cp -r "$WIKI_DIR"/* "$OUTPUT_DIR/markdown/"
     
+    if [ -d "$RAW_DIR" ]; then
+        echo ""
+        echo "Step 3: Copying raw markdown snapshots..."
+        mkdir -p "$OUTPUT_DIR/raw_markdown"
+        cp -r "$RAW_DIR"/. "$OUTPUT_DIR/raw_markdown/"
+    fi
+    
     echo ""
     echo "================================================================================"
     echo "✓ Markdown extraction complete!"
     echo "================================================================================"
     echo ""
     echo "Outputs:"
-    echo "  - Markdown files:  /output/markdown/"
+    echo "  - Markdown files:   /output/markdown/"
+    [ -d "$RAW_DIR" ] && echo "  - Raw markdown:     /output/raw_markdown/"
     echo ""
     exit 0
 fi
@@ -228,6 +238,12 @@ cp -r book "$OUTPUT_DIR/"
 mkdir -p "$OUTPUT_DIR/markdown"
 cp -r "$WIKI_DIR"/* "$OUTPUT_DIR/markdown/"
 
+# Copy pre-enhancement markdown snapshots
+if [ -d "$RAW_DIR" ]; then
+    mkdir -p "$OUTPUT_DIR/raw_markdown"
+    cp -r "$RAW_DIR"/. "$OUTPUT_DIR/raw_markdown/"
+fi
+
 # Copy book configuration for reference
 cp book.toml "$OUTPUT_DIR/"
 
@@ -237,9 +253,10 @@ echo "✓ Documentation build complete!"
 echo "================================================================================"
 echo ""
 echo "Outputs:"
-echo "  - HTML book:       /output/book/"
-echo "  - Markdown files:  /output/markdown/"
-echo "  - Book config:     /output/book.toml"
+echo "  - HTML book:        /output/book/"
+echo "  - Markdown files:   /output/markdown/"
+[ -d "$RAW_DIR" ] && echo "  - Raw markdown:      /output/raw_markdown/"
+echo "  - Book config:      /output/book.toml"
 echo ""
 echo "To serve the book locally:"
 echo "  cd output && python3 -m http.server --directory book 8000"

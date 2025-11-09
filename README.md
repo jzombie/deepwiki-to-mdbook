@@ -82,6 +82,9 @@ When built without `MARKDOWN_ONLY=true`, you get:
   - Individual markdown files with naming: `<number>-<title>.md`
   - Subsections in `section-N/` directories
   - Enhanced with intelligently-placed mermaid diagrams
+- `output/raw_markdown/` - Snapshot of markdown before diagram enhancement
+  - Matches raw html2text output (no injected diagrams)
+  - Useful for regression testing normalization changes
 - `output/book.toml` - mdBook configuration file
 
 ### Markdown-Only Mode
@@ -100,6 +103,7 @@ When built with `MARKDOWN_ONLY=true`:
   - Same structure as above
   - Faster for debugging diagram placement
   - Use when you only need the markdown content
+- `output/raw_markdown/` - Pre-enhancement markdown snapshots for parser debugging
 
 **Example filenames:**
 - `1-overview.md`

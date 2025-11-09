@@ -1239,6 +1239,17 @@ def main():
             
             print(f"\n✓ Successfully extracted {success_count}/{len(pages)} pages to temp directory")
             
+            # Snapshot pre-enhancement markdown for debugging
+            raw_output_dir = (output_dir.parent / 'raw_markdown').resolve()
+            try:
+                if raw_output_dir.exists():
+                    shutil.rmtree(raw_output_dir)
+                raw_output_dir.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copytree(temp_dir, raw_output_dir)
+                print(f"✓ Saved raw markdown snapshot to {raw_output_dir}")
+            except Exception as e:
+                print(f"✗ Warning: Failed to snapshot raw markdown ({e})")
+            
             # Phase 2: Enhance with diagrams using fuzzy matching
             extract_and_enhance_diagrams(repo, temp_dir, session)
             
