@@ -1,4 +1,4 @@
-# DeepWiki Documentation Builder
+# DeepWiki-to-mdBook Converter
 
 A generic utility for extracting wiki documentation from [DeepWiki.com](https://deepwiki.com) and building it into beautiful HTML documentation with [mdBook](https://rust-lang.github.io/mdBook/).
 
