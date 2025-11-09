@@ -1,0 +1,52 @@
+name: "deepwiki-to-mdbook"
+description: "Build DeepWiki documentation via bundled Dockerfile without publishing images"
+inputs:
+  repo:
+    description: "DeepWiki repository in owner/repo format (e.g., jzombie/deepwiki-to-mdbook)"
+    required: true
+  book_title:
+    description: "Title for the generated mdBook"
+    required: false
+    default: "Documentation"
+  book_authors:
+    description: "Author metadata passed to build-docs.sh"
+    required: false
+    default: ""
+  git_repo_url:
+    description: "Repository URL for mdBook edit links"
+    required: false
+    default: ""
+  markdown_only:
+    description: "Set to true to skip mdBook build and only extract markdown"
+    required: false
+    default: "false"
+  output_dir:
+    description: "Output directory on the calling workflow host (will be mounted into /output)"
+    required: false
+    default: "./output"
+runs:
+  using: "composite"
+  steps:
+    - name: Build Docker image
+      working-directory: ${{ github.action_path }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        IMAGE_TAG="deepwiki-to-mdbook:${GITHUB_RUN_ID:-local}"
+        echo "IMAGE_TAG=$IMAGE_TAG" >> "$GITHUB_ENV"
+        docker build -t "$IMAGE_TAG" .
+
+    - name: Run documentation builder
+      shell: bash
+      run: |
+        set -euo pipefail
+        mkdir -p "${{ inputs.output_dir }}"
+        OUT_DIR="$(cd "${{ inputs.output_dir }}" && pwd)"
+        docker run --rm \
+          -e REPO="${{ inputs.repo }}" \
+          -e BOOK_TITLE="${{ inputs.book_title }}" \
+          -e BOOK_AUTHORS="${{ inputs.book_authors }}" \
+          -e GIT_REPO_URL="${{ inputs.git_repo_url }}" \
+          -e MARKDOWN_ONLY="${{ inputs.markdown_only }}" \
+          -v "${OUT_DIR}:/output" \
+          "$IMAGE_TAG"

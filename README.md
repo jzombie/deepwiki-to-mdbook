@@ -111,6 +111,30 @@ When built with `MARKDOWN_ONLY=true`:
 - `2-configuration-reference.md`
 - `section-3/3-1-three-phase-pipeline.md`
 
+### GitHub Action (for usage in other repositories)
+
+Run the Docker build from any repository without publishing the image by invoking this repo as a composite action:
+
+```yaml
+name: Build Docs
+on:
+  workflow_dispatch:
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate DeepWiki docs
+        uses: jzombie/deepwiki-to-mdbook@main
+        with:
+          repo: owner/target-repo
+          book_title: "Target Docs"
+          output_dir: ./docs-output
+```
+
+The action builds the Docker image locally and writes artifacts to the specified `output_dir` (mounted into `/output` inside the container).
+
 ## How It Works
 
 ### Phase 1: Clean Markdown Extraction
