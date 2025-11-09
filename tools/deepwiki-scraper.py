@@ -239,10 +239,78 @@ def normalize_mermaid_state_descriptions(diagram_text: str) -> str:
 
     return '\n'.join(normalized_lines)
 
+def normalize_flowchart_nodes(diagram_text: str) -> str:
+    """Ensure flowchart nodes don't include tokens (like |) that break parsing."""
+    stripped = diagram_text.strip()
+    if not stripped:
+        return diagram_text
+
+    header = stripped.splitlines()[0].lower()
+    if not header.startswith(('graph', 'flowchart')):
+        return diagram_text
+
+    def replace_node_label(match: re.Match) -> str:
+        label = match.group(1)
+        label = label.replace('|', '/')
+        label = re.sub(r'\s+', ' ', label)
+        return f'["{label.strip()}"]'
+
+    text = re.sub(r'\["([^"]*)"\]', replace_node_label, diagram_text)
+
+    # Insert newlines between consecutive statements that were flattened into one line
+    text = re.sub(r'(\"]|\}|\))\s+(?=[A-Za-z0-9_])', r'\1\n', text)
+    text = re.sub(r'(\s\])\s+(?=[A-Za-z0-9_])', r'\1\n', text)
+
+    return text
+
+def normalize_gantt_diagram(diagram_text: str) -> str:
+    """Assign synthetic task IDs when omitted so Mermaid accepts gantt charts."""
+    stripped = diagram_text.lstrip()
+    if not stripped.startswith('gantt'):
+        return diagram_text
+
+    lines = diagram_text.split('\n')
+    normalized = []
+    task_counter = 1
+
+    task_line_pattern = re.compile(r'^(\s*"[^"]+"\s*):\s*(.+)$')
+
+    for line in lines:
+        match = task_line_pattern.match(line)
+        if not match:
+            normalized.append(line)
+            continue
+
+        remainder = match.group(2)
+        parts = [p.strip() for p in remainder.split(',', 2)]
+        if len(parts) < 2:
+            normalized.append(line)
+            continue
+
+        first_token = parts[0]
+        if re.match(r'^[A-Za-z_][\w-]*$', first_token) or first_token.lower().startswith('after '):
+            normalized.append(line)
+            continue
+
+        task_id = f"task{task_counter}"
+        task_counter += 1
+        start_value = parts[0]
+        end_value = parts[1]
+        suffix = ''
+        if len(parts) == 3:
+            suffix = f", {parts[2]}"
+
+        rebuilt = f"{match.group(1)}:{task_id}, {start_value}, {end_value}{suffix}"
+        normalized.append(rebuilt)
+
+    return '\n'.join(normalized)
+
 def normalize_mermaid_diagram(diagram_text: str) -> str:
     """Apply all normalization passes that keep diagrams compatible with Mermaid 11."""
     text = normalize_mermaid_edge_labels(diagram_text)
     text = normalize_mermaid_state_descriptions(text)
+    text = normalize_flowchart_nodes(text)
+    text = normalize_gantt_diagram(text)
     return text
     
     # Original markitdown code (temporarily disabled)
