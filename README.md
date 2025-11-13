@@ -57,15 +57,36 @@ python3 -m http.server --directory book 8000
 
 All configuration is done via environment variables:
 
-| Variable        | Description                              | Default                       |
-| --------------- | ---------------------------------------- | ----------------------------- |
-| `REPO`          | GitHub repository (owner/repo)           | Auto-detected from Git remote |
-| `BOOK_TITLE`    | Title for the documentation book         | `Documentation`               |
-| `BOOK_AUTHORS`  | Author name(s)                           | Auto-detected from repo owner |
-| `GIT_REPO_URL`  | Git repository URL                       | Auto-constructed from REPO    |
-| `MARKDOWN_ONLY` | Skip mdBook build, only extract markdown | `false`                       |
+| Variable            | Description                              | Default                       |
+| ------------------- | ---------------------------------------- | ----------------------------- |
+| `REPO`              | GitHub repository (owner/repo)           | Auto-detected from Git remote |
+| `BOOK_TITLE`        | Title for the documentation book         | `Documentation`               |
+| `BOOK_AUTHORS`      | Author name(s)                           | Auto-detected from repo owner |
+| `GIT_REPO_URL`      | Git repository URL                       | Auto-constructed from REPO    |
+| `MARKDOWN_ONLY`     | Skip mdBook build, only extract markdown | `false`                       |
+| `TEMPLATE_DIR`      | Directory containing header/footer templates | `/workspace/templates`    |
+| `HEADER_TEMPLATE`   | Path to header template file             | `$TEMPLATE_DIR/header.html`   |
+| `FOOTER_TEMPLATE`   | Path to footer template file             | `$TEMPLATE_DIR/footer.html`   |
+| `GENERATION_DATE`   | Custom date/time for generation timestamp | Auto-generated (current UTC)  |
 
 **Note:** If `REPO` is not provided, the script will attempt to auto-detect it from the current directory's Git remote URL (if running outside Docker).
+
+### Template Customization
+
+You can customize the header and footer content injected into each markdown file by providing your own templates. Templates support handlebar-like syntax with variable substitution and conditionals.
+
+See [templates/README.md](templates/README.md) for detailed documentation.
+
+**Example: Using custom templates**
+
+```bash
+docker run --rm \
+  -e REPO="owner/repo" \
+  -v "$(pwd)/my-templates:/custom-templates" \
+  -e TEMPLATE_DIR="/custom-templates" \
+  -v "$(pwd)/output:/output" \
+  deepwiki-to-mdbook
+```
 
 ## Output Format
 

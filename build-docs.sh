@@ -192,37 +192,70 @@ echo "Generated SUMMARY.md with $(grep -c '\[' src/SUMMARY.md) entries"
 echo ""
 echo "Step 4: Copying and processing markdown files to book..."
 
-# Create badges HTML snippet
-BADGES_HTML="<div class=\"project-badges\" style=\"display:flex;align-items:center;gap:0.6rem;padding:0.75rem 0 0.5rem;flex-wrap:wrap;margin-bottom:1.5rem;border-bottom:1px solid #e0e0e0;\">
-<a href=\"$DEEPWIKI_URL\" target=\"_blank\" rel=\"noopener noreferrer\" style=\"display:inline-flex;text-decoration:none;\"><img src=\"$DEEPWIKI_BADGE_URL\" alt=\"DeepWiki\" style=\"height:24px;\" /></a>"
+# Process header and footer templates
+TEMPLATE_DIR="${TEMPLATE_DIR:-/workspace/templates}"
+HEADER_TEMPLATE="${HEADER_TEMPLATE:-$TEMPLATE_DIR/header.html}"
+FOOTER_TEMPLATE="${FOOTER_TEMPLATE:-$TEMPLATE_DIR/footer.html}"
 
-if [ -n "$GIT_REPO_URL" ]; then
-    BADGES_HTML="$BADGES_HTML
-<a href=\"$GIT_REPO_URL\" target=\"_blank\" rel=\"noopener noreferrer\" style=\"display:inline-flex;text-decoration:none;\"><img src=\"$GITHUB_BADGE_URL\" alt=\"GitHub\" style=\"height:24px;\" /></a>"
+# Capture generation date/time
+GENERATION_DATE="${GENERATION_DATE:-$(date -u '+%B %d, %Y at %H:%M UTC')}"
+
+# Process header template if it exists
+if [ -f "$HEADER_TEMPLATE" ]; then
+    echo "Processing header template from $HEADER_TEMPLATE..."
+    HEADER_HTML=$(python3 /usr/local/bin/process-template.py "$HEADER_TEMPLATE" \
+        "DEEPWIKI_URL=$DEEPWIKI_URL" \
+        "DEEPWIKI_BADGE_URL=$DEEPWIKI_BADGE_URL" \
+        "GIT_REPO_URL=$GIT_REPO_URL" \
+        "GITHUB_BADGE_URL=$GITHUB_BADGE_URL" \
+        "REPO=$REPO" \
+        "BOOK_TITLE=$BOOK_TITLE" \
+        "BOOK_AUTHORS=$BOOK_AUTHORS" \
+        "GENERATION_DATE=$GENERATION_DATE")
+else
+    echo "Warning: Header template not found at $HEADER_TEMPLATE, skipping..."
+    HEADER_HTML=""
 fi
 
-BADGES_HTML="$BADGES_HTML
-</div>
+# Process footer template if it exists
+if [ -f "$FOOTER_TEMPLATE" ]; then
+    echo "Processing footer template from $FOOTER_TEMPLATE..."
+    FOOTER_HTML=$(python3 /usr/local/bin/process-template.py "$FOOTER_TEMPLATE" \
+        "DEEPWIKI_URL=$DEEPWIKI_URL" \
+        "DEEPWIKI_BADGE_URL=$DEEPWIKI_BADGE_URL" \
+        "GIT_REPO_URL=$GIT_REPO_URL" \
+        "GITHUB_BADGE_URL=$GITHUB_BADGE_URL" \
+        "REPO=$REPO" \
+        "BOOK_TITLE=$BOOK_TITLE" \
+        "BOOK_AUTHORS=$BOOK_AUTHORS" \
+        "GENERATION_DATE=$GENERATION_DATE")
+else
+    echo "Warning: Footer template not found at $FOOTER_TEMPLATE, skipping..."
+    FOOTER_HTML=""
+fi
 
-"
-
-# Copy files and inject badges
+# Copy files and inject header/footer
 cp -r "$WIKI_DIR"/* src/
 
-# Inject badges at the top of each markdown file
-echo "Injecting badges into markdown files..."
-file_count=0
-for mdfile in src/*.md src/*/*.md; do
-    [ -f "$mdfile" ] || continue
-    # Create temp file with badges + original content
-    {
-        printf '%s\n' "$BADGES_HTML"
-        cat "$mdfile"
-    } > "$mdfile.tmp"
-    mv "$mdfile.tmp" "$mdfile"
-    file_count=$((file_count + 1))
-done
-echo "Injected badges into $file_count files"
+# Inject header and footer into markdown files
+if [ -n "$HEADER_HTML" ] || [ -n "$FOOTER_HTML" ]; then
+    echo "Injecting header/footer into markdown files..."
+    file_count=0
+    for mdfile in src/*.md src/*/*.md; do
+        [ -f "$mdfile" ] || continue
+        # Create temp file with header + original content + footer
+        {
+            [ -n "$HEADER_HTML" ] && printf '%s\n' "$HEADER_HTML"
+            cat "$mdfile"
+            [ -n "$FOOTER_HTML" ] && printf '%s\n' "$FOOTER_HTML"
+        } > "$mdfile.tmp"
+        mv "$mdfile.tmp" "$mdfile"
+        file_count=$((file_count + 1))
+    done
+    echo "Processed $file_count files with templates"
+else
+    echo "No templates to inject, copying files as-is"
+fi
 
 # Step 5: Install mermaid support
 echo ""

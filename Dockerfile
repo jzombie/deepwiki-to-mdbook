@@ -21,6 +21,13 @@ COPY --from=builder /usr/local/cargo/bin/mdbook-mermaid /usr/local/bin/
 COPY tools/deepwiki-scraper.py /usr/local/bin/deepwiki-scraper.py
 RUN chmod +x /usr/local/bin/deepwiki-scraper.py
 
+# Copy the template processor
+COPY tools/process-template.py /usr/local/bin/process-template.py
+RUN chmod +x /usr/local/bin/process-template.py
+
+# Copy default templates
+COPY templates /workspace/templates
+
 # Copy build script
 COPY build-docs.sh /usr/local/bin/build-docs.sh
 RUN chmod +x /usr/local/bin/build-docs.sh
