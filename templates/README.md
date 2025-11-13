@@ -21,6 +21,12 @@ Customize the header and footer content injected into each markdown file.
 {{/if}}
 ```
 
+**Comments:** HTML comments are automatically removed from output
+```html
+<!-- This comment won't appear in the generated documentation -->
+<div>This content will appear</div>
+```
+
 ## Available Variables
 
 - `REPO` - Repository in `owner/repo` format

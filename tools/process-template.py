@@ -44,6 +44,9 @@ def process_template(template_content, variables):
     
     result = re.sub(variable_pattern, replace_variable, result)
     
+    # Remove HTML comments
+    result = re.sub(r'<!--.*?-->', '', result, flags=re.DOTALL)
+    
     return result
 
 

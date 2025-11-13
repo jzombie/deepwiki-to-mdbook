@@ -77,5 +77,9 @@ Use in other repositories:
 
 Built with Python 3.12, mdBook, and mdbook-mermaid in a multi-stage Docker image.
 
+## Development
+
+Run tests: `./run-tests.sh`
+
 [deepwiki-page]: https://deepwiki.com/jzombie/deepwiki-to-mdbook
 [deepwiki-badge]: https://deepwiki.com/badge.svg
