@@ -245,9 +245,13 @@ if [ -n "$HEADER_HTML" ] || [ -n "$FOOTER_HTML" ]; then
         [ -f "$mdfile" ] || continue
         # Create temp file with header + original content + footer
         {
-            [ -n "$HEADER_HTML" ] && printf '%s\n' "$HEADER_HTML"
+            if [ -n "$HEADER_HTML" ]; then
+                printf '%s\n\n' "$HEADER_HTML"
+            fi
             cat "$mdfile"
-            [ -n "$FOOTER_HTML" ] && printf '%s\n' "$FOOTER_HTML"
+            if [ -n "$FOOTER_HTML" ]; then
+                printf '\n%s\n' "$FOOTER_HTML"
+            fi
         } > "$mdfile.tmp"
         mv "$mdfile.tmp" "$mdfile"
         file_count=$((file_count + 1))
