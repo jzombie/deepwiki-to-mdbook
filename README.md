@@ -86,5 +86,9 @@ Run tests: `./scripts/run-tests.sh`
 - `scripts/` - Shell scripts
 - `templates/` - HTML templates
 
+## License
+
+This project is released into the public domain. Use it however you want, no attribution required. Provided as-is with no warranty or guarantees.
+
 [deepwiki-page]: https://deepwiki.com/jzombie/deepwiki-to-mdbook
 [deepwiki-badge]: https://deepwiki.com/badge.svg
