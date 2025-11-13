@@ -1,106 +1,70 @@
 # Template System
 
-This directory contains HTML templates for customizing the header and footer content injected into generated markdown documentation.
+Customize the header and footer content injected into each markdown file.
 
-## Available Templates
+## Files
 
-### `header.html`
-Injected at the **beginning** of each markdown file before the content.
+- `header.html` - Injected at the beginning of each file
+- `footer.html` - Injected at the end of each file
 
-### `footer.html`
-Injected at the **end** of each markdown file after the content.
+## Syntax
 
-## Template Syntax
-
-Templates support a simple handlebar-like syntax:
-
-### Variable Substitution
-Use `{{VARIABLE_NAME}}` to insert variable values:
-
+**Variables:** `{{VARIABLE_NAME}}`
 ```html
-<p>Repository: {{REPO}}</p>
-<p>Title: {{BOOK_TITLE}}</p>
+<p>{{BOOK_TITLE}} by {{BOOK_AUTHORS}}</p>
 ```
 
-### Conditionals
-Use `{{#if VARIABLE}}...{{/if}}` to conditionally include content:
-
+**Conditionals:** `{{#if VARIABLE}}...{{/if}}`
 ```html
 {{#if GIT_REPO_URL}}
-<a href="{{GIT_REPO_URL}}">View on GitHub</a>
+<a href="{{GIT_REPO_URL}}">GitHub</a>
 {{/if}}
 ```
 
 ## Available Variables
 
-The following variables are automatically available in templates:
-
-- `DEEPWIKI_URL` - URL to the DeepWiki documentation
-- `DEEPWIKI_BADGE_URL` - URL to the DeepWiki badge image
-- `GIT_REPO_URL` - URL to the Git repository (if configured)
-- `GITHUB_BADGE_URL` - URL to the GitHub badge image
 - `REPO` - Repository in `owner/repo` format
-- `BOOK_TITLE` - The title of the documentation book
-- `BOOK_AUTHORS` - The authors of the documentation
-- `GENERATION_DATE` - Date and time when the documentation was generated (UTC format)
+- `BOOK_TITLE` - Documentation title
+- `BOOK_AUTHORS` - Authors
+- `GENERATION_DATE` - When docs were generated (UTC)
+- `DEEPWIKI_URL` - DeepWiki documentation URL
+- `DEEPWIKI_BADGE_URL` - DeepWiki badge image URL
+- `GIT_REPO_URL` - Git repository URL (if configured)
+- `GITHUB_BADGE_URL` - GitHub badge image URL
 
-## Customization
+## Usage
 
-### Using Custom Templates
+Mount your custom templates:
 
-You can provide your own templates by:
+```bash
+# Custom template directory
+docker run -v "$(pwd)/my-templates:/workspace/templates" ...
 
-1. **In the Docker container**: Mount a custom template directory:
-   ```bash
-   docker run -v /path/to/templates:/custom-templates \
-     -e TEMPLATE_DIR=/custom-templates \
-     ...
-   ```
+# Or override individual files
+docker run -v "$(pwd)/my-header.html:/workspace/templates/header.html" ...
+```
 
-2. **Override specific templates**: Mount individual files:
-   ```bash
-   docker run -v /path/to/my-header.html:/workspace/templates/header.html \
-     ...
-   ```
+**Environment Variables:**
+- `TEMPLATE_DIR` - Template directory (default: `/workspace/templates`)
+- `HEADER_TEMPLATE` - Header path (default: `$TEMPLATE_DIR/header.html`)
+- `FOOTER_TEMPLATE` - Footer path (default: `$TEMPLATE_DIR/footer.html`)
 
-### Environment Variables
+## Examples
 
-- `TEMPLATE_DIR` - Directory containing templates (default: `/workspace/templates`)
-- `HEADER_TEMPLATE` - Path to header template (default: `$TEMPLATE_DIR/header.html`)
-- `FOOTER_TEMPLATE` - Path to footer template (default: `$TEMPLATE_DIR/footer.html`)
-
-## Example: Custom Header
-
+**Custom Header:**
 ```html
-<!-- templates/header.html -->
-<div class="custom-header" style="background: #f5f5f5; padding: 1rem; margin-bottom: 2rem;">
+<div style="background: #f5f5f5; padding: 1rem;">
   <h3>{{BOOK_TITLE}}</h3>
-  <p>Documentation generated from <a href="{{DEEPWIKI_URL}}">DeepWiki</a></p>
   {{#if GIT_REPO_URL}}
-  <p><a href="{{GIT_REPO_URL}}">Source Code</a></p>
+  <a href="{{GIT_REPO_URL}}">Source</a>
   {{/if}}
 </div>
 ```
 
-## Example: Custom Footer
-
+**Custom Footer:**
 ```html
-<!-- templates/footer.html -->
-<div class="custom-footer" style="border-top: 1px solid #e0e0e0; margin-top: 3rem; padding-top: 1rem;">
-  <p style="text-align: center; color: #666;">
-    © {{BOOK_AUTHORS}} | Generated from {{REPO}}
-  </p>
-</div>
+<hr>
+<p style="text-align: center; color: #666;">
+  Generated {{GENERATION_DATE}}
+</p>
 ```
-
-## Disabling Templates
-
-To disable header or footer injection:
-
-1. **Delete the template file** - If the file doesn't exist, it won't be injected
-2. **Use empty files** - Create empty `header.html` or `footer.html` files
-3. **Mount empty volumes**:
-   ```bash
-   docker run -v /dev/null:/workspace/templates/header.html \
-     ...
-   ```

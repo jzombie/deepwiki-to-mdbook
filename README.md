@@ -4,240 +4,78 @@
 
 **Work in Progress**
 
-A generic utility for extracting wiki documentation from [DeepWiki.com](https://deepwiki.com) and building it into beautiful HTML documentation with [mdBook](https://rust-lang.github.io/mdBook/).
+Extracts documentation from [DeepWiki.com](https://deepwiki.com) and builds it into searchable HTML with [mdBook](https://rust-lang.github.io/mdBook/).
 
-DeepWiki: https://deepwiki.com/jzombie/deepwiki-to-mdbook  
-mdBook: https://docs.deepwiki-to-mdbook.zenosmosis.com
+- 📚 [View this project on DeepWiki](https://deepwiki.com/jzombie/deepwiki-to-mdbook)
+- 📖 [View example output](https://docs.deepwiki-to-mdbook.zenosmosis.com)
 
-## Features
-
-- Scrapes wiki pages directly from DeepWiki website
-- Converts HTML to clean markdown using html2text
-- Extracts mermaid diagrams from JavaScript payload using intelligent fuzzy matching
-- Preserves page hierarchy and numbering
-- Builds beautiful HTML documentation with mdBook
-- Supports any GitHub repository indexed by DeepWiki
-- Fully configurable via environment variables
-- Self-contained Docker image
-- No authentication required
-
-## Prerequisites
-
-- Docker installed on your system
-- Internet connection (to access DeepWiki)
-
-## Usage
-
-### Quick Start
-
-Build the complete documentation (markdown + HTML book):
+## Quick Start
 
 ```bash
 # Build the Docker image
 docker build -t deepwiki-to-mdbook .
 
-# Run the complete build
-# Be sure to change `owner/repo` for the desired repo
+# Generate documentation
 docker run --rm \
   -e REPO="owner/repo" \
   -e BOOK_TITLE="My Documentation" \
   -v "$(pwd)/output:/output" \
   deepwiki-to-mdbook
 
-# Serve the documentation locally
-cd output
-# Here Python is used, but any web server will work as well
-python3 -m http.server --directory book 8000
-# Open http://localhost:8000 in your browser
+# Serve locally
+cd output && python3 -m http.server --directory book 8000
 ```
 
+Open http://localhost:8000 in your browser.
 
+## Configuration
 
-### Configuration Options
+**Core Settings:**
+- `REPO` - GitHub repository (owner/repo) - auto-detected from git remote
+- `BOOK_TITLE` - Documentation title (default: "Documentation")
+- `BOOK_AUTHORS` - Author names (default: repo owner)
+- `MARKDOWN_ONLY` - Set to "true" to skip HTML build
 
-All configuration is done via environment variables:
+**Template Customization:**
 
-| Variable            | Description                              | Default                       |
-| ------------------- | ---------------------------------------- | ----------------------------- |
-| `REPO`              | GitHub repository (owner/repo)           | Auto-detected from Git remote |
-| `BOOK_TITLE`        | Title for the documentation book         | `Documentation`               |
-| `BOOK_AUTHORS`      | Author name(s)                           | Auto-detected from repo owner |
-| `GIT_REPO_URL`      | Git repository URL                       | Auto-constructed from REPO    |
-| `MARKDOWN_ONLY`     | Skip mdBook build, only extract markdown | `false`                       |
-| `TEMPLATE_DIR`      | Directory containing header/footer templates | `/workspace/templates`    |
-| `HEADER_TEMPLATE`   | Path to header template file             | `$TEMPLATE_DIR/header.html`   |
-| `FOOTER_TEMPLATE`   | Path to footer template file             | `$TEMPLATE_DIR/footer.html`   |
-| `GENERATION_DATE`   | Custom date/time for generation timestamp | Auto-generated (current UTC)  |
-
-**Note:** If `REPO` is not provided, the script will attempt to auto-detect it from the current directory's Git remote URL (if running outside Docker).
-
-### Template Customization
-
-You can customize the header and footer content injected into each markdown file by providing your own templates. Templates support handlebar-like syntax with variable substitution and conditionals.
-
-See [templates/README.md](templates/README.md) for detailed documentation.
-
-**Example: Using custom templates**
+Customize header/footer content by mounting your own HTML templates:
 
 ```bash
 docker run --rm \
   -e REPO="owner/repo" \
-  -v "$(pwd)/my-templates:/custom-templates" \
-  -e TEMPLATE_DIR="/custom-templates" \
+  -v "$(pwd)/my-templates:/workspace/templates" \
   -v "$(pwd)/output:/output" \
   deepwiki-to-mdbook
 ```
 
-## Output Format
+Templates use `{{VARIABLE}}` syntax. Available variables: `REPO`, `BOOK_TITLE`, `BOOK_AUTHORS`, `GIT_REPO_URL`, `DEEPWIKI_URL`, `GENERATION_DATE`. See [templates/README.md](templates/README.md) for details.
 
-### Full Build Mode
+## Output
 
-When built without `MARKDOWN_ONLY=true`, you get:
-
-- `output/book/` - Complete HTML documentation
-  - Searchable, responsive mdBook site
-  - Working mermaid diagram rendering
-  - Navigation sidebar with hierarchy
-  - "Edit this page" links to GitHub
+- `output/book/` - Searchable HTML documentation with mermaid diagrams
 - `output/markdown/` - Source markdown files
-  - Individual markdown files with naming: `<number>-<title>.md`
-  - Subsections in `section-N/` directories
-  - Enhanced with intelligently-placed mermaid diagrams
-- `output/raw_markdown/` - Snapshot of markdown before diagram enhancement
-  - Matches raw html2text output (no injected diagrams)
-  - Useful for regression testing normalization changes
-- `output/book.toml` - mdBook configuration file
+- `output/raw_markdown/` - Pre-enhanced markdown (for debugging)
+- `output/book.toml` - mdBook configuration
 
-### Markdown-Only Mode
+## GitHub Action
 
-```bash
-docker run --rm \
-  -e REPO="owner/repo" \
-  -e MARKDOWN_ONLY="true" \
-  -v "$(pwd)/output:/output" \
-  deepwiki-to-mdbook
-```
-
-When built with `MARKDOWN_ONLY=true`:
-
-- `output/markdown/` - Source markdown files only
-  - Same structure as above
-  - Faster for debugging diagram placement
-  - Use when you only need the markdown content
-- `output/raw_markdown/` - Pre-enhancement markdown snapshots for parser debugging
-
-**Example filenames:**
-- `overview.md`
-- `1-quick-start.md`
-- `2-configuration-reference.md`
-- `section-3/3-1-three-phase-pipeline.md`
-
-### GitHub Action (for usage in other repositories)
-
-Run the Docker build from any repository without publishing the image by invoking this repo as a composite action:
+Use in other repositories:
 
 ```yaml
-name: Build Docs
-on:
-  workflow_dispatch:
-
-jobs:
-  docs:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Generate DeepWiki docs
-        uses: jzombie/deepwiki-to-mdbook@main
-        with:
-          repo: owner/target-repo
-          book_title: "Target Docs"
-          output_dir: ./docs-output
+- uses: jzombie/deepwiki-to-mdbook@main
+  with:
+    repo: owner/target-repo
+    book_title: "Target Docs"
+    output_dir: ./docs-output
 ```
-
-The action builds the Docker image locally and writes artifacts to the specified `output_dir` (mounted into `/output` inside the container).
 
 ## How It Works
 
-### Phase 1: Clean Markdown Extraction
-1. Fetches wiki structure from DeepWiki
-2. Scrapes each page's HTML content
-3. Removes navigation and UI elements
-4. Converts to clean markdown using html2text
-5. Saves to temporary directory
+1. Scrapes wiki pages from DeepWiki and converts to markdown
+2. Extracts and intelligently places mermaid diagrams using fuzzy matching
+3. Builds searchable HTML documentation with mdBook
 
-### Phase 2: Diagram Enhancement
-1. Extracts JavaScript payload from any DeepWiki page
-2. Finds mermaid diagrams embedded in JavaScript
-3. Extracts diagrams with sufficient context for matching
-4. Uses fuzzy matching with progressive chunk sizes to find placement locations
-5. Intelligently inserts diagrams after relevant paragraphs
-6. Moves completed files atomically to output directory
-
-### Phase 3: mdBook Build (unless MARKDOWN_ONLY=true)
-1. Initializes mdBook structure with configuration
-2. Auto-generates SUMMARY.md table of contents from file structure
-3. Copies markdown files to book source
-4. Installs mdbook-mermaid assets (CSS/JS for diagram rendering)
-5. Builds complete HTML documentation
-6. Copies outputs to /output directory
-
-## Technical Details
-
-- **Scraping:** Direct HTTP requests to DeepWiki
-- **HTML Parsing:** [BeautifulSoup4](https://www.crummy.com/software/BeautifulSoup/) for robust parsing
-- **Markdown Conversion:** [html2text](https://github.com/Alir3z4/html2text) with body_width=0
-- **Diagram Extraction:** Regex pattern matching on JavaScript `self.__next_f.push` calls
-- **Fuzzy Matching:** Normalized whitespace, progressive chunk comparison, scoring system
-- **Documentation Build:** [mdBook](https://rust-lang.github.io/mdBook/) with rust theme + [mdbook-mermaid](https://github.com/badboy/mdbook-mermaid) plugin
-- **Package Management:** `pip` inside the Python slim image
-- **Dependencies:** [Python 3.12](https://www.python.org/), [Rust](https://www.rust-lang.org/), mdbook, mdbook-mermaid
-- **Architecture:** Multi-stage [Docker](https://www.docker.com/) build (Rust builder + Python runtime)
-
-## Troubleshooting
-
-### "No wiki pages found"
-The repository may not be indexed by DeepWiki. Try visiting `https://deepwiki.com/<owner>/<repo>` in a browser to verify the wiki exists.
-
-### "Could not find content on page"
-The HTML structure of DeepWiki may have changed. The scraper looks for common content selectors and may need updating.
-
-### Diagrams not appearing
-- Check that the wiki has mermaid diagrams on DeepWiki's website
-- Use `MARKDOWN_ONLY=true` to debug the markdown output
-- Diagrams are matched using fuzzy matching - some may not have enough context to match accurately
-
-### Connection timeouts
-The scraper includes automatic retries (3 attempts per page). If issues persist, check your internet connection.
-
-### mdBook build fails
-- Ensure Docker has enough memory (2GB+ recommended)
-- Check that the Rust toolchain installed correctly in the image
-- Try `MARKDOWN_ONLY=true` to verify markdown extraction works independently
-
-## Credits
-
-- **[DeepWiki](https://deepwiki.com):** AI-powered documentation service
-- **[mdBook](https://rust-lang.github.io/mdBook/):** Rust-based documentation builder
-- **[mdbook-mermaid](https://github.com/badboy/mdbook-mermaid):** Mermaid diagram support for mdBook
-- **[BeautifulSoup4](https://www.crummy.com/software/BeautifulSoup/):** HTML parsing library
-- **[html2text](https://github.com/Alir3z4/html2text):** HTML to Markdown converter
-- **`pip`:** Standard Python package installer used during Docker build
-
-## Architecture Notes
-
-This tool is designed to be fully generic and can be extracted as a standalone package:
-
-- **No hardcoded repository specifics** - all configuration via environment variables
-- **Dynamic structure discovery** - auto-generates table of contents from actual files
-- **Fuzzy diagram matching** - works with DeepWiki's client-side rendering
-- **Temp directory workflow** - atomic operations, no partial states
-- **Multi-stage Docker build** - optimized image size with both Python and Rust tools
-
-Perfect for:
-- Extracting any DeepWiki wiki as markdown
-- Building searchable HTML documentation
-- Creating offline documentation archives
-- Integrating into CI/CD pipelines
+Built with Python 3.12, mdBook, and mdbook-mermaid in a multi-stage Docker image.
 
 [deepwiki-page]: https://deepwiki.com/jzombie/deepwiki-to-mdbook
 [deepwiki-badge]: https://deepwiki.com/badge.svg
