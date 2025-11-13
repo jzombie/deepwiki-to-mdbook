@@ -7,13 +7,13 @@ import unittest
 import sys
 import os
 
-# Add tools directory to path
-tools_dir = os.path.join(os.path.dirname(__file__), '..', 'tools')
-sys.path.insert(0, tools_dir)
+# Add parent directory to path to import process-template.py
+python_dir = os.path.join(os.path.dirname(__file__), '..')
+sys.path.insert(0, python_dir)
 
 # Import the function we need to test
 import importlib.util
-spec = importlib.util.spec_from_file_location("process_template", os.path.join(tools_dir, "process-template.py"))
+spec = importlib.util.spec_from_file_location("process_template", os.path.join(python_dir, "process-template.py"))
 process_template_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(process_template_module)
 process_template = process_template_module.process_template

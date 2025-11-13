@@ -9,9 +9,10 @@ echo "=========================================="
 echo ""
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TEMPLATE_PROCESSOR="$SCRIPT_DIR/tools/process-template.py"
-HEADER_TEMPLATE="$SCRIPT_DIR/templates/header.html"
-FOOTER_TEMPLATE="$SCRIPT_DIR/templates/footer.html"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+TEMPLATE_PROCESSOR="$PROJECT_DIR/python/process-template.py"
+HEADER_TEMPLATE="$PROJECT_DIR/templates/header.html"
+FOOTER_TEMPLATE="$PROJECT_DIR/templates/footer.html"
 
 # Test 1: Variable substitution
 echo "Test 1: Variable substitution with all variables"

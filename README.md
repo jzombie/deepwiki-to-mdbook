@@ -6,8 +6,8 @@
 
 Extracts documentation from [DeepWiki.com](https://deepwiki.com) and builds it into searchable HTML with [mdBook](https://rust-lang.github.io/mdBook/).
 
-- 📚 [View this project on DeepWiki](https://deepwiki.com/jzombie/deepwiki-to-mdbook)
-- 📖 [View example output](https://docs.deepwiki-to-mdbook.zenosmosis.com)
+- [View this project on DeepWiki](https://deepwiki.com/jzombie/deepwiki-to-mdbook)
+- [View example output](https://docs.deepwiki-to-mdbook.zenosmosis.com)
 
 ## Quick Start
 
@@ -79,7 +79,12 @@ Built with Python 3.12, mdBook, and mdbook-mermaid in a multi-stage Docker image
 
 ## Development
 
-Run tests: `./run-tests.sh`
+Run tests: `./scripts/run-tests.sh`
+
+**Project Structure:**
+- `python/` - Python scripts and tests
+- `scripts/` - Shell scripts
+- `templates/` - HTML templates
 
 [deepwiki-page]: https://deepwiki.com/jzombie/deepwiki-to-mdbook
 [deepwiki-badge]: https://deepwiki.com/badge.svg
