@@ -1,0 +1,8 @@
+<!-- Note: Conditional must be inline to prevent mdBook from wrapping links in separate paragraph tags -->
+<div class="project-badges" style="display:flex;align-items:center;gap:0.6rem;padding:0.75rem 0 0.5rem;flex-wrap:wrap;margin-bottom:1.5rem;border-bottom:1px solid #e0e0e0;">
+{{#if GIT_REPO_URL}}<a href="{{GIT_REPO_URL}}" rel="noopener noreferrer" style="display:inline-flex;text-decoration:none;"><img src="{{GITHUB_BADGE_URL}}" alt="GitHub" style="height:24px;" /></a>{{/if}}
+</div>
+
+<div style="font-style: italic; color: #888; margin-bottom: 1.5rem;">
+    <p>This documentation is part of the &quot;Projects with Books&quot; initiative at <a href="https://zenosmosis.com">zenOSmosis</a>.</p>{{#if GIT_REPO_URL}}<p>The source code for {{BOOK_TITLE}} is available on <a href="{{GIT_REPO_URL}}" rel="noopener noreferrer">GitHub</a>.</p> {{/if}}
+</div>
