@@ -104,7 +104,6 @@ cat > book.toml <<EOF
 title = "$BOOK_TITLE"
 authors = ["$BOOK_AUTHORS"]
 language = "en"
-multilingual = false
 src = "src"
 
 [output.html]
